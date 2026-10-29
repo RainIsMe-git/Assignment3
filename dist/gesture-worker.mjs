@@ -1,8 +1,10 @@
+// Classic worker: MediaPipe 0.10.14's WASM loader uses importScripts.
+// The library itself is imported dynamically, so no global bundle is needed.
 // Inference runs off the rendering thread. Frames are not uploaded.
-import { FilesetResolver, GestureRecognizer } from 'https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.14/vision_bundle.mjs';
-
+(async () => {
 let recognizer;
 try {
+  const { FilesetResolver, GestureRecognizer } = await import('https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.14/vision_bundle.mjs');
   const files = await FilesetResolver.forVisionTasks('https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.14/wasm');
   recognizer = await GestureRecognizer.createFromOptions(files, {
     baseOptions: {
@@ -32,3 +34,4 @@ self.onmessage = event => {
     self.postMessage({ type: 'error', message: '手势识别已中断。请重新连接摄像头，或使用鼠标模式。' });
   } finally { frame.close(); }
 };
+})();

@@ -30,7 +30,7 @@ export class HandCamera {
       await timeout(this.video.play(), 10000, '摄像头画面无法播放，请重新连接。');
       if (!current()) return false;
       onStatus('正在加载手势模型，首次可能需要约半分钟…');
-      this.worker = new Worker(new URL('./gesture-worker.mjs', import.meta.url), {type:'module'});
+      this.worker = new Worker(new URL('./gesture-worker.mjs', import.meta.url));
       let busy = false, lastTime = -1, capturing = false;
       await timeout(new Promise((resolve,reject) => {
         this.worker.onerror = () => reject(new Error('识别库加载失败，请检查网络后重试。'));

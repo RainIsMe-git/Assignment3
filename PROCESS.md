@@ -12,12 +12,21 @@ The student selected a game controlled by a real webcam, then chose a first-pers
 4. **Separate recognition and game rules.** The same spell rules work with the webcam or mouse/keyboard. This gives the marker a meaningful demonstration when permission, a webcam, or the model download is unavailable.
 5. **Cancel stored charge on interruption.** Tracking loss and pauses clear the charge. To resume camera play, the player must show a stable open palm. This prevents a stale fist from casting immediately on recovery.
 6. **Generate the environment in code.** Perspective projection, crystals, a stylised glove, particles, and the emblem avoid unnecessary downloaded artwork and keep the mouse demo independent of external graphics libraries.
+7. **Repair the inference worker after a real compatibility failure.** A browser test using a fake camera exposed that MediaPipe's WebAssembly loader calls `importScripts`, which is unavailable in a module worker. The worker was changed to a classic worker with a dynamic library import. A second test successfully downloaded the actual model and processed simulated video frames on the CPU.
 
 These are design decisions and implementation checks, **not observations from a human trial**.
 
 ## Technical verification
 
-The automated rules test charge/release, held-fist repetition, brief input, loss of tracking, pause/resume, round end, and gesture confidence/stability. Browser checks are recorded separately after execution; automated tests do not satisfy the assignment's other-person trial.
+Verification performed on 29 October 2026:
+
+- All **6 automated rule tests** passed: charge/release, held-fist repetition, brief input, loss of tracking, pause/resume, round end, and gesture confidence/stability.
+- Chrome browser checks passed for mouse aim/charge/hit, unlocking the challenge, pausing/resuming its timer, help pausing play, returning home, keyboard charging, a blocked-CDN mouse demo, permission-denied feedback and fallback, and a 390px-wide layout without horizontal overflow. No uncaught page errors were observed. Screenshots are in `docs/`.
+- The environment initially blocked loopback access. For the UI checks, Playwright served the project's own assets to the browser using request fulfilment. This verifies browser behaviour and rendering, but does not itself verify an HTTP hosting provider.
+- A **fake camera stream with the real MediaPipe library/model** successfully loaded the CPU model, processed frames, and reported no hand in the test pattern. The camera was stopped on exit. This confirms the model loading/inference chain, not accuracy on a physical hand.
+- A **fake stream with deterministic synthetic worker results** completed the full hand-input path: a stable open palm resumed play, charging and a fist hit the crystal, no-hand frames paused play, returning as a fist did not resume, a stable open palm did resume, and returning home released the stream.
+
+Automated and synthetic checks do **not** satisfy the assignment's trial with another person. Physical webcam aiming, gesture accuracy, comfort, and lighting tolerance still require real user testing.
 
 ## User trial — still to do
 
