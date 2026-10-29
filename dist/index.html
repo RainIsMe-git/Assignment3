@@ -1,0 +1,54 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#11101d">
+  <meta name="description" content="掌心奥术：用真实手势瞄准、蓄力、释放魔法的第一人称训练场。">
+  <title>Palm Arcana · 掌心奥术</title>
+  <link rel="icon" href="./sigil.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="./style.css">
+</head>
+<body>
+  <main class="app">
+    <header class="masthead">
+      <a class="brand" href="./" aria-label="掌心奥术首页"><img src="./sigil.svg" alt=""><span>PALM ARCANA<small>掌 心 奥 术</small></span></a>
+      <span class="chapter">THE ASTRAL CONSERVATORY <i>／</i> 星辉研修院</span>
+      <div class="header-actions"><button id="sound" class="icon-button" aria-pressed="false">音效：关</button><button id="help" class="icon-button">操作指南 <span>?</span></button></div>
+    </header>
+    <section class="arena" aria-label="第一人称魔法训练场">
+      <canvas id="scene" aria-label="魔法训练场画面，移动手或鼠标瞄准漂浮的水晶靶"></canvas>
+      <div class="vignette"></div>
+      <div class="arena-label"><span class="tiny-label">TRAINING GROUNDS · 01</span><span>星辉庭院</span><small>ARCANE BOLT / 奥术弹</small></div>
+      <div class="stats" id="stats" hidden><div><span>得分</span><strong id="score">0000</strong></div><div><span>剩余时间</span><strong id="time">练习</strong></div><div><span>连击</span><strong id="combo">×0</strong></div></div>
+      <div id="aim" class="aim" aria-hidden="true"><span></span><i></i></div>
+      <div id="feedback" class="feedback" role="status" aria-live="polite"></div>
+      <div class="intro" id="intro">
+        <span class="eyebrow"><i></i> A LITTLE MAGIC, IN YOUR HANDS</span>
+        <h1>魔法，<br>始于<span>掌心。</span></h1>
+        <p>以手为引，凝聚星光。<br>走进第一人称训练场，释放你的第一道奥术。</p>
+        <div class="intro-controls"><button id="camera-start" class="primary">启用摄像头施法 <span>↗</span></button><button id="mouse-start" class="secondary">先用鼠标体验 <span>→</span></button></div>
+        <div class="privacy"><span>◈</span> 摄像头仅在本机处理，不录制或上传画面。<br><span></span> 首次识别需要联网加载模型。</div>
+      </div>
+      <aside class="camera-panel" id="camera-panel" hidden>
+        <div class="camera-top"><span><i id="camera-dot"></i> <span id="camera-heading">HAND TRACKING</span></span><button id="stop-camera" aria-label="关闭摄像头并返回首页">关闭 ×</button></div>
+        <div class="camera-view"><video id="video" muted autoplay playsinline></video><canvas id="landmarks" width="240" height="180"></canvas><span id="camera-placeholder">请将一只手放进画面</span></div>
+        <div class="camera-status" id="camera-status" role="status">等待摄像头</div>
+      </aside>
+      <div class="bottom-hud" id="bottom-hud" hidden>
+        <div class="mode-block"><span class="tiny-label" id="mode-label">FREE PRACTICE</span><strong id="mode-name">自由练习</strong><button id="switch-input">返回首页</button></div>
+        <div class="charge-block"><div><span id="spell-state">张开手掌，凝聚魔法</span><b id="charge-number">0%</b></div><div class="charge-track"><span id="charge-bar"></span><i></i></div><small id="input-hint">张掌蓄力 → 握拳释放</small></div>
+        <div class="round-controls"><button id="challenge" class="primary compact">开始 60 秒挑战 →</button><button id="pause" class="icon-button">暂停 Ⅱ</button></div>
+      </div>
+      <div class="overlay" id="pause-overlay" hidden><div class="dialog"><span class="eyebrow">TAKE YOUR TIME</span><h2 id="pause-title">训练已暂停</h2><p id="pause-text">准备好后继续。</p><button id="resume" class="primary">继续训练 →</button><button id="pause-home" class="text-button">结束并返回首页</button></div></div>
+      <div class="overlay" id="result-overlay" hidden><div class="dialog result"><span class="eyebrow">SESSION COMPLETE</span><h2>星光回应了你。</h2><p>本次奥术训练已完成</p><strong class="final-score" id="final-score">0</strong><span class="tiny-label">TOTAL SCORE / 最终得分</span><div class="result-metrics"><div><strong id="final-hits">0</strong><span>击破目标</span></div><div><strong id="final-accuracy">0%</strong><span>命中率</span></div><div><strong id="final-combo">0</strong><span>最高连击</span></div></div><button id="replay" class="primary">再挑战一次 ↻</button><button id="result-home" class="text-button">返回首页并关闭摄像头</button></div></div>
+      <div class="error-box" id="error-box" hidden role="alert"><strong id="error-title">摄像头暂时不可用</strong><p id="error-message"></p><button id="retry-camera" class="secondary">重新连接</button><button id="fallback" class="text-button">改用鼠标体验 →</button></div>
+      <div class="loading" id="loading" hidden><span class="spinner"></span><span id="loading-text">正在唤醒魔法…</span><button id="cancel-loading" class="text-button">取消</button></div>
+    </section>
+    <footer class="guide-strip"><div><b>01</b><span><strong>以手瞄准</strong><small>移动手掌，指引星光</small></span><span class="step-symbol">⌖</span></div><div><b>02</b><span><strong>张掌蓄力</strong><small>保持张掌，等待光芒充盈</small></span><span class="step-symbol">✧</span></div><div><b>03</b><span><strong>握拳释放</strong><small>击破水晶，留下你的分数</small></span><span class="step-symbol">✦</span></div></footer>
+    <div class="page-note"><span>一只手，一道光，一次小小的冒险。</span><span>HEADPHONES OPTIONAL <i>·</i> 本机手势识别</span></div>
+  </main>
+  <dialog id="help-dialog"><button id="close-help" class="close-dialog" aria-label="关闭操作指南">×</button><span class="eyebrow">THE SPELLBOOK</span><h2>你的第一道魔法</h2><ol><li><strong>先练习：</strong>选择摄像头或鼠标模式，击破一个水晶靶后再开始挑战。</li><li><strong>摄像头：</strong>手掌朝向镜头，移动手来瞄准；张开五指蓄力约一秒，再握拳发射。一次握拳只会发射一次。</li><li><strong>鼠标：</strong>在场景中移动准星，按住左键蓄力，松开发射。也可以用方向键瞄准、空格键蓄力和释放。</li><li><strong>暂停：</strong>按 Esc 或点暂停。离开网页、切换窗口或丢失手部识别时会暂停；重新张掌后再继续。</li><li><strong>识别建议：</strong>只伸出一只手，保证照明，保持手指和手腕完整入镜。若模型加载失败，可以重试或用鼠标体验。</li></ol><p class="help-note">摄像头画面在浏览器本地处理。程序不录制、不保存、不上传视频；识别库及模型需要从外部服务下载。首次使用请在普通浏览器标签页打开并允许摄像头。</p><button id="help-done" class="primary">明白了 →</button></dialog>
+  <script type="module" src="./app.mjs"></script>
+</body>
+</html>
