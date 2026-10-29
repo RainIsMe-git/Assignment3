@@ -37,14 +37,14 @@ export async function launch({ ports = Array.from({ length: 10 }, (_, i) => 4173
       if (error.code !== 'EADDRINUSE') throw error;
       if (await existingGame(port)) {
         const url = `http://127.0.0.1:${port}`;
-        console.log(`Palm Arcana is already running. Opening ${url}`);
+        console.log(`Garden Gunners is already running. Opening ${url}`);
         if (openBrowser) openInBrowser(url);
         return { reused: true, server: null, url };
       }
       continue;
     }
     const url = `http://127.0.0.1:${server.address().port}`;
-    console.log(`\nPalm Arcana is ready: ${url}`);
+    console.log(`\nGarden Gunners is ready: ${url}`);
     console.log('Your browser will open automatically. Allow the camera only when you choose camera mode.');
     console.log('Keep this window open while playing. Close it or press Ctrl+C to stop the game.\n');
     if (openBrowser) openInBrowser(url);
@@ -55,7 +55,7 @@ export async function launch({ ports = Array.from({ length: 10 }, (_, i) => 4173
 
 if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
   if (Number(process.versions.node.split('.')[0]) < 20) {
-    console.error('Palm Arcana requires Node.js 20 or newer. Please update Node.js and try again.');
+    console.error('Garden Gunners requires Node.js 20 or newer. Please update Node.js and try again.');
     process.exitCode = 1;
   } else launch().catch(error => { console.error(`Cannot launch: ${error.message}`); process.exitCode = 1; });
 }

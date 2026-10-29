@@ -12,7 +12,7 @@ try {
       delegate: 'CPU'
     },
     runningMode: 'VIDEO',
-    numHands: 1,
+    numHands: 2,
     minHandDetectionConfidence: 0.6,
     minHandPresenceConfidence: 0.6,
     minTrackingConfidence: 0.6
@@ -29,7 +29,11 @@ self.onmessage = event => {
   try {
     if (!recognizer) throw new Error('Model unavailable');
     const result = recognizer.recognizeForVideo(frame, timestamp);
-    self.postMessage({ type: 'result', landmarks: result.landmarks[0] || [], gesture: result.gestures[0]?.[0]?.categoryName || 'None', confidence: result.gestures[0]?.[0]?.score || 0 });
+    self.postMessage({ type: 'result', hands: result.landmarks.map((landmarks, i) => ({
+      landmarks,
+      handedness: result.handedness[i]?.[0]?.categoryName || '',
+      confidence: result.handedness[i]?.[0]?.score || 0
+    })) });
   } catch (error) {
     self.postMessage({ type: 'error', message: '手势识别已中断。请重新连接摄像头，或使用鼠标模式。' });
   } finally { frame.close(); }

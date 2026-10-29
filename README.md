@@ -1,106 +1,77 @@
-# Palm Arcana · 掌心奥术
+# Garden Gunners · 指尖双枪
 
-A small first-person gesture-controlled spellcasting game. Open your palm to charge an arcane bolt, aim with your hand, then close your fist to release it and break a floating crystal.
+一个用真实手势玩的第一人称射击小游戏。伸出食指与拇指（中指也可以一起伸出），收起无名指和小指，移动手掌瞄准大致方位，向上轻抬食指 / 手腕发射子弹，击退迎面而来的变异植物。可以单手开枪，也可以双手同时开火。
 
-Public source repository: [RainIsMe-git/Assignment3](https://github.com/RainIsMe-git/Assignment3) · branch: **main**.
+![新版首页](docs/screenshot.png)
 
-![Palm Arcana title screen](docs/screenshot.png)
+## 启动
 
-## Idea and intended player
+需要 Node.js 20+ 和现代桌面浏览器。无需 npm install、账号或 API key。
 
-For a casual player curious about casting magic with their own hand. A fixed first-person courtyard keeps the experience focused on one learnable interaction: **aim → charge → release → see a hit or miss → try again**. It is a short training experience, rather than a walking or exploration game.
+Windows 双击 **`Play Garden Gunners.cmd`**（或本机的 **`开始游戏.lnk`**）。它会自动启动服务并打开浏览器；保留启动窗口，关闭窗口或 Ctrl+C 停止服务。旧的 `Play Palm Arcana.cmd` 也可启动新版。重复启动会复用当前目录的服务；端口被占用则自动选用 4173–4182。
 
-Start with untimed practice. Breaking your first crystal unlocks a 60-second challenge. Charge for about a second for full power. A hit gives 50–100 base points, with up to 50 extra points for consecutive hits. A miss resets the combo. At the end, see your score, accuracy, and best combo, then replay or return home.
-
-## Run locally
-
-Run this prototype locally using the steps below. The source is published on GitHub. A Sites project was also registered, but online game hosting could not complete because the connector became unavailable while renewing its source credential. No live game link is claimed.
-
-Requires **Node.js 20 or newer** and a modern desktop browser. No Python, npm installation, account, API key, or paid service is needed.
-
-**Windows quick start:** double-click **`Play Palm Arcana.cmd`** in the repository root. A local **`开始游戏`** shortcut, when present, opens the same launcher. It starts the server and opens your default browser automatically. Keep its small console window open while playing; close it or press **Ctrl+C** to stop. Repeated launches reuse the server for this checkout. If another program occupies the usual port, the launcher chooses a free port from 4173–4182. A missing or old Node installation produces an explanation.
-
-You can also create a Windows shortcut to that file, or run `npm run play` from a terminal. The launcher uses its own location, so it works even when the project folder is moved or contains spaces. Local `.lnk` shortcuts are excluded from Git because their absolute paths are specific to one computer.
-
-For a manual start from a fresh terminal inside this project folder:
+也可以在项目目录运行：
 
 ```sh
-node --version
 npm start
 ```
 
-Open **http://localhost:4173** in a normal browser tab. Keep the terminal open. Stop the server with **Ctrl+C**. If port 4173 is already in use, use the double-click launcher instead.
+打开 http://localhost:4173 。若端口被占用，请用 `npm run play` 自动选端口。不要直接双击 dist/index.html：模块和摄像头需要 HTTP 服务。
 
-Camera access requires **localhost or HTTPS**. Opening `index.html` directly with `file://` is not supported because the game uses JavaScript modules and a worker. Embedded previews may block camera permissions; use a standalone browser tab.
+源代码与版本历史：[RainIsMe-git/Assignment3 · main](https://github.com/RainIsMe-git/Assignment3/tree/main)。这是源码仓库；游戏按上述方式在本机启动。
 
-## Controls
+## 怎么玩
 
-| Action | Camera mode | Mouse / keyboard demo |
+| 动作 | 摄像头 | 鼠标 / 键盘试玩 |
 | --- | --- | --- |
-| Aim | Move one open palm, facing the camera | Move the mouse over the scene, or use arrow keys |
-| Charge | Keep all five fingers open | Hold the left mouse button or Space |
-| Release | Close the hand into a fist | Release the button or Space |
-| Pause | Pause button or Esc | Pause button or Esc |
-| Stop | Return home / Close camera | Return home |
+| 摆好指枪 | 食指＋拇指，或食指＋中指＋拇指伸出；其余手指收起，单手或双手均可 | 进入试玩后双枪可用 |
+| 瞄准 | 移动手掌；青色 L / 橙色 R 小手显示两枪方向 | 移动鼠标或方向键 |
+| 发射 | 稳住片刻，向上轻抬食指或手腕，放回原位后再抬 | 左键 / A 左枪，右键 / D 右枪，空格双发 |
+| 暂停 | Esc / 暂停按钮 | 相同 |
+| 退出 | 退出 / 返回首页，同时关闭摄像头 | 相同 |
 
-Use one hand in good lighting with the wrist and fingers fully visible. The mirrored preview includes the detected hand landmarks and the current recognition state. Aim turns gold over a target. The energy bar shows charge; its small marker is the minimum charge needed to fire. Keep opening the hand between casts: a held fist never repeatedly fires.
+食指侧向镜头一些，避免指尖完全朝镜头导致轮廓重叠。保持手指和手腕完整入镜。两只手分开、照明均匀更容易识别。
 
-Mouse mode implements the same charge, cast, target, scoring, practice, challenge, and reset loop. It is also the demonstration when no webcam or recognition service is available.
+**不用精确瞄准。** 每只手附近的宽阔椭圆区域都会寻找目标，彩色弧线和虚线显示吸附对象。命中会击退植物、显示 POP! / POW! 和得分；仙人掌需要两发，其余植物一发。没有弹药限制。抬起后保持不动不会自动连射。
 
-## Dependencies and privacy
+先自由练习，不限时也不扣生命；随时点击“开始保卫战”。保卫战有 5 点生命、75 秒、逐步加快的 5 波植物。植物碰到你会扣生命，撑到最后就赢。结算可以重玩。
 
-The game and original perspective renderer are plain HTML, CSS, and JavaScript. The local server and logic tests use only Node built-ins. There is no build step.
+## 交互实现
 
-Camera mode downloads the following public assets on demand:
+- `dist/core.mjs`：`readGunPose()` 根据 21 个关键点识别指枪；`GunTrigger.sample()` 比较食指尖相对指根的高度，按掌长归一化。稳定约 120ms 后，上抬超过 0.24 掌长触发一次；必须回落才能重新装定。整体移动手掌不会改变这一相对高度。
+- 两只手使用独立的触发器、瞄准位置、冷却和识别状态。使用 MediaPipe handedness 对应物理左右手，结果数组顺序改变不会交换触发器。
+- `assistedTarget()` 在大范围内选择附近植物，`GardenGame.shoot()` 扣目标血量、击退、加分。射击保存抬指前的瞄准点，避免后坐动作把目标甩开。
+- `dist/app.mjs`：输入、暂停、模式切换、反馈和摄像头生命周期。
+- `dist/renderer.mjs`：Canvas 原创复古卡通角色、白手套和粒子，`backdrop.mjs` 绘制分层背景。首页展示两种指枪图示与抬指动画，详细说明收进问号。右上角胶片按钮切换柔焦、颗粒、暖色与暗角；系统减少动态效果设置会停用动态图示、颗粒位移及划痕。无外部绘图库或运行时图片服务依赖。
+- `dist/camera.mjs` / `dist/gesture-worker.mjs`：双手识别及预览；模型在 worker 中运行。
 
-- `@mediapipe/tasks-vision` **0.10.14**, including its matching WebAssembly runtime, from jsDelivr.
-- Google's pretrained `gesture_recognizer` model, **float16, version 1**, from Google Cloud Storage.
+## 隐私与依赖
 
-An internet connection to those providers is required for camera mode. The game does **not** train a model. MediaPipe provides `Open_Palm`, `Closed_Fist`, and hand landmarks; our code maps these to game actions. Recognition runs on the device. Camera frames are not recorded, uploaded, or saved by this application. Audio is off by default and generated locally when enabled.
+摄像头需 localhost 或 HTTPS；独立浏览器标签页更可靠。首次启用手势时下载：
 
-There are no analytics, accounts, local-storage records, or backend game services. Returning home, cancelling setup, or closing the page stops the camera tracks. A new connection asks the browser for access again according to its permission settings.
+- jsDelivr 的 `@mediapipe/tasks-vision` **0.10.14** 与对应 WASM；
+- Google Cloud Storage 的 `gesture_recognizer` **float16 / version 1** 模型。
 
-## Error and interruption handling
+视频仅在本机浏览器处理，不上传、不录制、不保存。无账户、分析服务或游戏后端。音效默认关闭，开启后由 Web Audio 本地合成。鼠标试玩不加载模型，可离线使用。
 
-- Permission denied, missing/busy camera, unsupported context, model/network failure, and loading timeout: explain the problem and provide retry and mouse-demo controls.
-- Hand leaves the image: cancel charge and pause the timer; a stable open palm is required to resume, so returning as a fist cannot accidentally fire.
-- Unrecognised or low-confidence gesture: cancel charge after a short stability window, rather than guessing a cast.
-- Switching tabs/windows, opening help, or pausing: stop the timer and discard held input. Resume explicitly; camera mode additionally requires a new open palm.
-- Repeated clicks and held fists: input setup is guarded, and a cast requires a charged open-to-fist transition.
+## 中断与错误
 
-## Project structure and the code to explain
+- 两手都失去有效指枪约 1 秒后自动暂停，回到稳定指枪状态后恢复。一只手离场不会打断另一只手。
+- 暂停、识别丢失和过期帧清除触发基线，避免恢复瞬间误射。
+- 切换窗口或打开指南会暂停，需明确继续。
+- 拒绝权限、摄像头缺失 / 被占用、模型加载失败或超时均有错误提示、重试和鼠标试玩入口。
+- 取消加载、退出、返回首页和关闭页面会停止摄像头；迟到的授权结果也会释放视频流。
 
-```text
-dist/                Browser source and generated SVG emblem
-  core.mjs           Spell rules, timer, score, and gesture stability filter
-  app.mjs            Connects player input to game state and feedback
-  renderer.mjs       Original perspective courtyard, crystals, hand, and effects
-  camera.mjs         Camera lifecycle and hand preview
-  gesture-worker.mjs MediaPipe recognition
-scripts/serve.mjs     Local static server
-scripts/launch.mjs    Auto-open launcher with repeat-launch and port handling
-Play Palm Arcana.cmd Windows double-click entry point
-tests/core.test.mjs   Interaction and interruption tests
-docs/                Screenshots of the running experience
-PROCESS.md           Design decisions, AI use, and genuine user-trial record
-CREDITS.md           Sources and attribution
-```
-
-To explain one action-to-response connection, follow `SpellGame.tick()` in `dist/core.mjs`: while `open`, charge increases; only an `open → fist` transition with enough charge emits `cast`. `app.mjs` then checks the target, updates the score, and triggers the visual/audio response. The hand position is saved while open to reduce aim movement when the fingers close.
-
-Run the dependency-free rule tests:
+## 验证与限制
 
 ```sh
 npm test
 ```
 
-## Known limitations and submission status
+21 项自动测试覆盖：独立双枪、重复射击抑制、重新装定、抖动、识别丢失、相对抬指、宽容瞄准、击退与伤害、暂停、胜负和重置，以及左右手指尖与发射位置在不同尺寸和边缘瞄准下的对齐。浏览器验证另见 `PROCESS.md`。
 
-- This prototype has fixed-camera perspective graphics, one spell, and one target type. There is no walking, multiplayer, or progress saving.
-- Hand tracking depends on lighting, camera angle, model support, and device performance. Left/right-handed users use the same controls. The game has not yet been validated by a real human using the physical webcam.
-- Models are not bundled for offline camera use. Mouse mode works without their download.
-- The intended hardware is a desktop/laptop; the page adapts to narrow screens, but mobile gesture performance needs separate testing.
-- **A real user trial is still required.** Record it honestly in `PROCESS.md` and make or justify a design change.
-- **Submit the public repository URL to Canvas after finishing the remaining checks and user trial.** Use [https://github.com/RainIsMe-git/Assignment3](https://github.com/RainIsMe-git/Assignment3) and check it while signed out. The source repository is not a hosted game; follow the run instructions above to play.
+这是固定第一视角的轻量原型，没有移动探索或存档。**新版真实双手摄像头的舒适度、识别成功率和左右手交叉情形，仍需要本人实际试玩；合成关键点测试不能替代这一验证。** 手机布局可用，但主要面向桌面摄像头。课程要求的他人试玩尚待完成，不编造试玩记录。
 
-See [PROCESS.md](PROCESS.md) and [CREDITS.md](CREDITS.md).
+美术参考用户给出的《茶杯头》画面与 1930 年代美式橡皮管动画；本项目画面由代码原创绘制，没有直接使用游戏截图或角色素材。详见 `CREDITS.md`。
+
+本次进一步参考 [Studio MDHR 官方花朵 Boss 截图](https://studiomdhr.com/site/wp-content/uploads/2025/09/cuphead_screenshot_featured_1.png) 和 [Caitlin Russell 的背景分层说明](https://caitrussell.com/ch-bgs.html)。游戏未使用这些截图作为运行素材；曾尝试生成的水彩风景被用户否定，已撤下，最终背景由可编辑代码绘制。

@@ -46,7 +46,7 @@ export class HandCamera {
         if(!current())return;
         busy=false;
         if(event.data.type==='error'){fail(event.data.message);return;}
-        if(event.data.type==='result'){this.draw(event.data.landmarks);onResult(event.data);}
+        if(event.data.type==='result'){this.draw(event.data.hands || []);onResult(event.data);}
       };
       this.timer=setInterval(async()=>{
         if(!current()||busy||capturing||this.video.readyState<2||lastTime===this.video.currentTime||document.hidden)return;
@@ -72,11 +72,14 @@ export class HandCamera {
       throw new Error(messages[error.name] || error.message || '摄像头连接失败，请重试。');
     }
   }
-  draw(points) {
+  draw(hands) {
     const c=this.canvas.getContext('2d'),w=this.canvas.width,h=this.canvas.height;
-    c.clearRect(0,0,w,h);if(!points.length)return;
-    c.strokeStyle='#d4a6ff';c.lineWidth=1.5;
+    c.clearRect(0,0,w,h);
+    for(const hand of hands){
+    const points=hand.landmarks;if(points.length!==21)continue;
+    c.strokeStyle=hand.handedness==='Left'?'#94e5d7':'#ffba83';c.lineWidth=1.5;
     for(const [a,b] of edges){c.beginPath();c.moveTo(points[a].x*w,points[a].y*h);c.lineTo(points[b].x*w,points[b].y*h);c.stroke();}
-    c.fillStyle='#f2ddff';for(const p of points){c.beginPath();c.arc(p.x*w,p.y*h,2,0,Math.PI*2);c.fill();}
+    c.fillStyle='#fff1cb';for(const p of points){c.beginPath();c.arc(p.x*w,p.y*h,2,0,Math.PI*2);c.fill();}
+    }
   }
 }

@@ -6,7 +6,7 @@ import { createHash } from 'node:crypto';
 
 const root = fileURLToPath(new URL('../dist/', import.meta.url));
 export const instance = createHash('sha256').update(resolve(root).toLowerCase()).digest('hex').slice(0, 16);
-const types = { '.html': 'text/html; charset=utf-8', '.css': 'text/css; charset=utf-8', '.mjs': 'text/javascript; charset=utf-8', '.svg': 'image/svg+xml' };
+const types = { '.html': 'text/html; charset=utf-8', '.css': 'text/css; charset=utf-8', '.mjs': 'text/javascript; charset=utf-8', '.svg': 'image/svg+xml', '.png': 'image/png' };
 export function createGameServer() {
 return http.createServer(async (req, res) => {
   try {
@@ -38,9 +38,9 @@ export async function startServer(port = 4173) {
 }
 
 if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
-  startServer().then(() => console.log('Palm Arcana → http://localhost:4173')).catch(error => {
+  startServer().then(() => console.log('Garden Gunners → http://localhost:4173')).catch(error => {
     console.error(`Cannot start: ${error.message}`);
-    console.error('Tip: double-click Play Palm Arcana.cmd to choose a free port automatically.');
+    console.error('Tip: double-click Play Garden Gunners.cmd to choose a free port automatically.');
     process.exitCode = 1;
   });
 }

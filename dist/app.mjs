@@ -1,193 +1,157 @@
-import { SpellGame, GestureFilter, clamp } from './core.mjs';
-import { ArenaRenderer } from './renderer.mjs';
-import { HandCamera } from './camera.mjs';
-
-const $=id=>document.getElementById(id);
-const game=new SpellGame();
-const renderer=new ArenaRenderer($('scene'));
-const camera=new HandCamera($('video'),$('landmarks'));
-const filter=new GestureFilter();
-const arena=document.querySelector('.arena');
-const aim={x:.5,y:.46},desired={...aim},castAim={...aim};
-let input='none',started=false,gesture='none',pressed=false,loading=false;
-let lastHand=0,lastResult=0,resumeSince=0,feedbackUntil=0,manualPending=false;
-let soundEnabled=false,audio=null;
+import {GardenGame,GunTrigger,readGunPose,clamp} from './core.mjs';
+import {GardenRenderer} from './renderer.mjs';
+import {HandCamera} from './camera.mjs';
+const $=id=>document.getElementById(id),arena=document.querySelector('.arena');
+const game=new GardenGame(),renderer=new GardenRenderer($('scene')),camera=new HandCamera($('video'),$('landmarks'));
+const hands=Object.fromEntries(['left','right'].map((side,i)=>[side,{aim:{x:i?.63:.37,y:.55},desired:{x:i?.63:.37,y:.55},visible:true,trigger:new GunTrigger(),lastShot:-Infinity,pose:null}]));
+let started=false,input='none',loading=false,lastResult=0,lastGun=0,resumeSince=0,feedbackUntil=0,sound=false,audio=null,setupGeneration=0;
 const keys=new Set();
-
-function feedback(text,seconds=2.3){$('feedback').textContent=text;feedbackUntil=performance.now()+seconds*1000;}
-function playTone(freq,duration=.12,type='sine',gain=.045){
-  if(!soundEnabled)return;
-  try{
-    audio ||= new (window.AudioContext||window.webkitAudioContext)();
-    if(audio.state==='suspended')audio.resume().catch(()=>{});
-    const o=audio.createOscillator(),v=audio.createGain();o.type=type;o.frequency.setValueAtTime(freq,audio.currentTime);o.frequency.exponentialRampToValueAtTime(freq*1.5,audio.currentTime+duration);v.gain.setValueAtTime(gain,audio.currentTime);v.gain.exponentialRampToValueAtTime(.001,audio.currentTime+duration);o.connect(v);v.connect(audio.destination);o.start();o.stop(audio.currentTime+duration);
-  }catch{soundEnabled=false;$('sound').textContent='音效不可用';}
+function feedback(text,seconds=2){$('feedback').textContent=text;feedbackUntil=performance.now()+seconds*1000;}
+function tone(hit=false){
+  if(!sound)return;
+  try{audio ||= new (window.AudioContext||window.webkitAudioContext)();audio.resume().catch(()=>{});const o=audio.createOscillator(),v=audio.createGain();o.type=hit?'triangle':'square';o.frequency.setValueAtTime(hit?630:260,audio.currentTime);o.frequency.exponentialRampToValueAtTime(hit?160:80,audio.currentTime+.13);v.gain.setValueAtTime(.055,audio.currentTime);v.gain.exponentialRampToValueAtTime(.001,audio.currentTime+.17);o.connect(v);v.connect(audio.destination);o.start();o.stop(audio.currentTime+.18);}catch{sound=false;$('sound').textContent='音效不可用';}
 }
-function showError(message){
-  loading=false;$('loading').hidden=true;$('error-message').textContent=message;$('error-box').hidden=false;
-  if(started)pause('camera-error','摄像头连接中断',message);
-}
-function begin(mode){
-  input=mode;started=true;gesture='none';pressed=false;filter.reset();keys.clear();manualPending=false;
-  game.reset('practice');renderer.reset(true);
-  Object.assign(aim,{x:.5,y:.46});Object.assign(desired,aim);Object.assign(castAim,aim);
-  $('intro').hidden=true;$('stats').hidden=false;$('bottom-hud').hidden=false;$('error-box').hidden=true;$('result-overlay').hidden=true;$('pause-overlay').hidden=true;
-  $('camera-panel').hidden=mode!=='camera';arena.classList.add('playing');
-  $('mode-label').textContent='FREE PRACTICE';$('mode-name').textContent='自由练习';$('challenge').hidden=false;$('challenge').disabled=true;
-  $('input-hint').textContent=mode==='camera'?'张掌蓄力 → 握拳释放 · 手掌正对镜头':'按住左键或空格蓄力 → 松开发射';
-  feedback(mode==='camera'?'先张开手掌，让准星跟随你\n瞄准水晶，蓄力后握拳发射':'先试着击破中央的水晶\n移动鼠标瞄准，按住左键蓄力，松开发射',5);
-  if(mode==='camera'){lastHand=0;lastResult=performance.now();pause('lost-hand','请伸出一只手','手掌朝向镜头并张开五指，识别稳定后自动开始。');}
+function resetInput(){keys.clear();resumeSince=0;for(const h of Object.values(hands)){h.trigger.reset();h.pose=null;h.lastShot=-Infinity;}}
+function start(mode){
+  input=mode;started=true;loading=false;game.reset();renderer.clear();resetInput();
+  for(const [side,h] of Object.entries(hands)){h.visible=mode==='mouse';h.aim={x:side==='left'?.45:.55,y:.57};h.desired={...h.aim};}
+  for(const id of ['intro','poster-stamp','loading','error-box','result-overlay','pause-overlay'])$(id).hidden=true;
+  $('game-hud').hidden=false;$('bottom-hud').hidden=false;$('camera-panel').hidden=mode!=='camera';$('challenge').hidden=false;arena.classList.add('playing');
+  $('input-hint').textContent=mode==='mouse'?'A / 左键　✷　D / 右键':'↗　✷';
+  feedback('热身！',1.8);
+  if(mode==='camera'){lastResult=performance.now();lastGun=0;pause('lost-hand','摆好指枪','拇指伸出 · 两种手势都可以');}
 }
 function home(){
-  camera.stop();input='none';started=false;pressed=false;gesture='none';filter.reset();keys.clear();game.reset();renderer.active=false;
-  loading=false;manualPending=false;
-  for(const id of ['stats','bottom-hud','camera-panel','pause-overlay','result-overlay','error-box','loading'])$(id).hidden=true;
-  $('intro').hidden=false;arena.classList.remove('playing','low-time');$('feedback').textContent='';$('camera-placeholder').hidden=false;$('camera-dot').classList.remove('ready');
+  setupGeneration++;camera.stop();input='none';started=false;loading=false;resetInput();game.reset();renderer.clear();
+  for(const id of ['game-hud','bottom-hud','camera-panel','pause-overlay','result-overlay','error-box','loading'])$(id).hidden=true;
+  $('intro').hidden=false;$('poster-stamp').hidden=false;$('feedback').textContent='';arena.classList.remove('playing');
 }
-function pause(reason,title='训练已暂停',text='放松一下手腕。准备好后继续。'){
+function pause(reason,title='暂停',message='准备好再继续。'){
   if(!started||game.finished)return;
-  game.pause(reason);pressed=false;gesture='none';keys.clear();resumeSince=0;
-  $('pause-title').textContent=title;$('pause-text').textContent=text;$('pause-overlay').hidden=false;
-  $('resume').hidden=reason==='lost-hand'||reason==='camera-error';
+  game.pause(reason);resetInput();$('pause-title').textContent=title;$('pause-text').textContent=message;$('pause-overlay').hidden=false;$('resume').hidden=reason==='lost-hand'||reason==='camera-error';
+  $('pose-guide').hidden=reason!=='lost-hand';
 }
 function resume(){
   if(!started||game.finished)return;
-  manualPending=false;
-  if(input==='camera'){filter.reset();pause('lost-hand','准备继续','请重新张开手掌，识别稳定后自动继续。');lastResult=performance.now();return;}
-  game.resume();gesture='none';pressed=false;$('pause-overlay').hidden=true;
+  resetInput();
+  if(input==='camera'){lastResult=performance.now();pause('lost-hand','演员重新就位','摆好指枪并保持片刻，即可继续。');}
+  else{game.resume();$('pause-overlay').hidden=true;}
 }
-function onHand(result){
-  if(input!=='camera')return;
-  const now=performance.now();lastResult=now;
-  if(result.landmarks.length){
-    lastHand=now;$('camera-placeholder').hidden=true;$('camera-dot').classList.add('ready');
-    const mapped={Open_Palm:'open',Closed_Fist:'fist'}[result.gesture]||'none';
-    gesture=filter.sample(mapped,result.confidence,now);
-    // Use the palm, not the fingertips; closing a fist otherwise moves the aim.
-    if(mapped==='open'&&result.confidence>=.65){
-      const palm=[0,5,9,13,17].map(i=>result.landmarks[i]);
-      const x=palm.reduce((s,p)=>s+p.x,0)/5,y=palm.reduce((s,p)=>s+p.y,0)/5;
-      desired.x=clamp((1-x-.12)/.76,.07,.93);desired.y=clamp((y-.12)/.73,.18,.73);
-    }
-    $('camera-status').textContent=gesture==='open'?'张掌 · 正在蓄力':gesture==='fist'?'握拳 · 请再次张掌': '已检测到手 · 请张开五指';
-    if(game.pauseReason==='lost-hand'){
-      if(gesture==='open'){
-        resumeSince ||= now;
-        $('pause-text').textContent='已识别张掌，保持片刻…';
-        if(now-resumeSince>=600){game.resume();$('pause-overlay').hidden=true;gesture='none';filter.reset();resumeSince=0;feedback('识别已恢复 · 张掌蓄力',1.5);}
-      }else resumeSince=0;
-    }
-  }else{
-    filter.reset();gesture='none';game.cancelCharge();resumeSince=0;
-    $('camera-placeholder').hidden=false;$('camera-dot').classList.remove('ready');$('camera-status').textContent='未检测到手 · 请完整入镜';
-    if(started&&!game.pauseReason&&!game.finished)pause('lost-hand','暂时看不到你的手','计时已暂停。把手放回画面并张开五指，即可继续。');
-  }
+function showError(message){
+  camera.stop();loading=false;setupGeneration++;$('loading').hidden=true;
+  if(started)pause('camera-error');
+  $('error-message').textContent=message;$('error-box').hidden=false;
 }
 async function startCamera(){
   if(loading)return;
-  home();loading=true;input='camera';$('error-box').hidden=true;$('loading').hidden=false;
-  try{
-    const ready=await camera.start(onHand,text=>{$('loading-text').textContent=text;},message=>showError(message));
-    if(!ready||input!=='camera')return;
-    loading=false;$('loading').hidden=true;begin('camera');
-  }catch(error){showError(error.message);}
+  home();loading=true;input='camera';const generation=++setupGeneration;$('loading').hidden=false;
+  try{const ready=await camera.start(onHands,text=>{if(generation===setupGeneration)$('loading-text').textContent=text;},showError);if(ready&&generation===setupGeneration)start('camera');}
+  catch(error){if(generation===setupGeneration)showError(error.message);}
+}
+function shoot(side,aim){
+  if(!started||game.pauseReason||game.finished||$('help-dialog').open)return;
+  const h=hands[side],now=performance.now();if(now-h.lastShot<180)return;
+  const event=game.shoot(aim||h.aim,side);if(!event)return;h.lastShot=now;
+  renderer.shot(event,h);tone(event.hit);
+  if(event.hit && game.combo>2)feedback(`${game.combo} COMBO!`,.8);
+}
+function onHands(result){
+  if(input!=='camera'||!started)return;
+  const now=performance.now();lastResult=now;
+  // MediaPipe handedness identifies each physical hand independently of array order.
+  const seen=new Set();let gunCount=0;
+  for(const observation of result.hands||[]){
+    if(observation.confidence<.6)continue;
+    const side=observation.handedness==='Left'?'left':observation.handedness==='Right'?'right':null;
+    if(!side||seen.has(side))continue;seen.add(side);
+    const h=hands[side],pose=readGunPose(observation.landmarks);h.pose=pose;h.visible=!!pose;
+    if(pose?.gun){gunCount++;lastGun=now;
+      // Aim remains at the pre-flick position while the shot gesture is raised.
+      if(!h.trigger.latched)h.desired={...pose.aim};
+      if(!game.pauseReason){const shot=h.trigger.sample(pose,now);if(shot)shoot(side,shot);}
+      else h.trigger.reset();
+    }else h.trigger.reset();
+  }
+  for(const side of ['left','right'])if(!seen.has(side)){hands[side].visible=false;hands[side].pose=null;hands[side].trigger.reset();}
+  $('camera-status').textContent=gunCount===2?'● 双枪':gunCount===1?'● 单枪':seen.size?'拇指＋食指 ↑':'○ 未入镜';
+  if(game.pauseReason==='lost-hand'){
+    if(gunCount){resumeSince ||= now;if(now-resumeSince>=400){game.resume();resetInput();$('pause-overlay').hidden=true;feedback('开火！',1);}}
+    else resumeSince=0;
+  }
 }
 function challenge(){
-  if(!started||!game.practiceComplete||game.pauseReason)return;
-  game.reset('challenge');renderer.reset(false);gesture='none';pressed=false;filter.reset();
-  $('mode-label').textContent='TIMED CHALLENGE';$('mode-name').textContent='星辉试炼';$('challenge').hidden=true;
-  feedback('试炼开始 · 60 秒\n连续命中可获得连击加分',3);playTone(390,.22);
+  if(!started||game.pauseReason)return;
+  game.reset('survival');renderer.clear();resetInput();$('challenge').hidden=true;$('result-overlay').hidden=true;
+  feedback('READY?　GO!',2);
+  if(input==='camera')pause('lost-hand','准备，开火！','重新摆好指枪，识别稳定后开始保卫战。');
 }
 function finish(){
-  pressed=false;gesture='none';keys.clear();
-  $('final-score').textContent=game.score;
-  $('final-hits').textContent=game.hits;
-  $('final-accuracy').textContent=(game.shots?Math.round(game.hits/game.shots*100):0)+'%';
-  $('final-combo').textContent=game.bestCombo;
-  $('result-overlay').hidden=false;$('pause-overlay').hidden=true;playTone(660,.4);
+  resetInput();$('pause-overlay').hidden=true;$('result-overlay').hidden=false;
+  $('result-title').textContent=game.won?'花园保住了！':'哎呀，花园沦陷！';$('result-text').textContent=game.won?'干得漂亮，指枪神射手。':'放松手腕，下一局再把它们打回去。';
+  $('final-score').textContent=game.score;$('final-kills').textContent=game.kills;$('final-accuracy').textContent=(game.shots?Math.round(game.hits/game.shots*100):0)+'%';$('final-combo').textContent=game.bestCombo;
 }
-function replay(){
-  if(!started)return;
-  game.practiceComplete=true;game.pauseReason='';game.finished=false;challenge();$('result-overlay').hidden=true;
-  if(input==='camera')pause('lost-hand','准备下一轮','重新张开手掌，识别稳定后开始计时。');
+function pointer(event){
+  if(input!=='mouse'||!started||game.pauseReason||game.finished||event.target!==$('scene'))return;
+  const r=$('scene').getBoundingClientRect(),x=clamp((event.clientX-r.left)/r.width),y=clamp((event.clientY-r.top)/r.height);
+  for(const [side,h] of Object.entries(hands)){h.desired={x:clamp(x+(side==='left'?-.015:.015)),y};h.aim={...h.desired};}
 }
-function cast(event){
-  const hit=renderer.cast(input==='camera'?castAim:aim,event.power);
-  if(hit){
-    const points=game.hit(event.power);playTone(540+game.combo*28,.2);
-    feedback(game.mode==='practice'?'命中了！你已掌握第一道魔法\n可以继续练习，或点击「开始 60 秒挑战」':`+${points}  ·  ${game.combo>1?game.combo+' 连击':'命中水晶'}`,game.mode==='practice'?5:1.4);
-    if(game.mode==='practice')$('challenge').disabled=false;
-  }else{game.miss();feedback('擦肩而过 · 将准星对准水晶再试一次',1.8);playTone(170,.1);}
-}
-function isControl(event){return !!event.target.closest('button, a, dialog');}
-function pointerMove(event){
-  if(input!=='mouse'||!started||game.pauseReason||game.finished||isControl(event))return;
-  const r=$('scene').getBoundingClientRect();desired.x=clamp((event.clientX-r.left)/r.width);desired.y=clamp((event.clientY-r.top)/r.height);
-}
-arena.addEventListener('pointermove',pointerMove);
-arena.addEventListener('pointerdown',event=>{
-  if(input!=='mouse'||!started||game.pauseReason||game.finished||event.button!==0||isControl(event)||$('help-dialog').open)return;
-  event.preventDefault();pointerMove(event);pressed=true;
+$('scene').addEventListener('pointermove',pointer);
+$('scene').addEventListener('contextmenu',e=>e.preventDefault());
+$('scene').addEventListener('pointerdown',e=>{if(input!=='mouse'||![0,2].includes(e.button))return;e.preventDefault();pointer(e);shoot(e.button===0?'left':'right');});
+window.addEventListener('keydown',e=>{
+  if($('help-dialog').open)return;
+  if(e.code==='Escape'&&started){e.preventDefault();if(game.pauseReason)resume();else pause('manual');return;}
+  if(input!=='mouse'||!started||game.pauseReason||game.finished||e.target.closest('button,a,input'))return;
+  if(['KeyA','KeyD','Space','ArrowLeft','ArrowRight','ArrowUp','ArrowDown'].includes(e.code))e.preventDefault();
+  if(e.repeat)return;
+  keys.add(e.code);
+  if(e.code==='KeyA'||e.code==='Space')shoot('left');if(e.code==='KeyD'||e.code==='Space')shoot('right');
 });
-window.addEventListener('pointerup',event=>{if(event.button===0)pressed=false;});
-window.addEventListener('pointercancel',()=>{pressed=false;game.cancelCharge();});
-arena.addEventListener('pointerleave',()=>{if(input==='mouse'&&pressed){pressed=false;game.cancelCharge();}});
-window.addEventListener('keydown',event=>{
-  if(event.code==='Escape'&&started&&!$('help-dialog').open){event.preventDefault();if(game.pauseReason)resume();else pause('manual');return;}
-  if(input!=='mouse'||!started||game.pauseReason||game.finished||isControl(event)||$('help-dialog').open)return;
-  if(['Space','ArrowLeft','ArrowRight','ArrowUp','ArrowDown'].includes(event.code)){event.preventDefault();keys.add(event.code);if(event.code==='Space')pressed=true;}
-});
-window.addEventListener('keyup',event=>{keys.delete(event.code);if(event.code==='Space')pressed=false;});
-window.addEventListener('blur',()=>{if(started&&!game.finished&&!game.pauseReason)pause('background','训练已暂停','你离开了游戏窗口。回来后可以继续。');});
-document.addEventListener('visibilitychange',()=>{if(document.hidden&&started&&!game.finished&&!game.pauseReason)pause('background','训练已暂停','切换页面时已暂停计时，蓄力也已取消。');});
+window.addEventListener('keyup',e=>keys.delete(e.code));
+window.addEventListener('blur',()=>{if(started&&!game.pauseReason)pause('background','演出暂停','你离开了窗口。回来后点击继续。');});
+// Also discard physical trigger baselines while setup is pending in the background.
+document.addEventListener('visibilitychange',()=>{if(document.hidden&&started&&!game.pauseReason)pause('background','演出暂停','切换页面时，植物和计时都已暂停。');});
 window.addEventListener('pagehide',()=>camera.stop());
-
-$('camera-start').onclick=startCamera;$('retry-camera').onclick=startCamera;
-$('mouse-start').onclick=$('fallback').onclick=()=>{home();begin('mouse');};
-for(const id of ['stop-camera','switch-input','pause-home','result-home','cancel-loading'])$(id).onclick=home;
-$('pause').onclick=()=>pause('manual');$('resume').onclick=resume;
-$('challenge').onclick=challenge;$('replay').onclick=replay;
-$('sound').onclick=()=>{soundEnabled=!soundEnabled;$('sound').textContent=soundEnabled?'音效：开':'音效：关';$('sound').setAttribute('aria-pressed',String(soundEnabled));if(soundEnabled)playTone(440,.1);};
-$('help').onclick=()=>{if(started&&!game.pauseReason&&!game.finished){pause('help');manualPending=true;}$('help-dialog').showModal();};
-for(const id of ['close-help','help-done'])$(id).onclick=()=>$('help-dialog').close();
-$('help-dialog').addEventListener('close',()=>{if(manualPending){manualPending=false;$('pause-title').textContent='准备继续训练';$('pause-text').textContent='阅读指南时已暂停。准备好后点击继续。';}});
-
+$('camera-start').onclick=$('retry-camera').onclick=startCamera;
+$('mouse-start').onclick=$('fallback').onclick=()=>{home();start('mouse');};
+for(const id of ['home','pause-home','result-home','error-home','stop-camera','cancel-loading'])$(id).onclick=home;
+$('pause').onclick=()=>pause('manual');$('resume').onclick=resume;$('challenge').onclick=challenge;
+$('replay').onclick=()=>{game.finished=false;game.pauseReason='';challenge();};
+$('sound').onclick=()=>{sound=!sound;$('sound').setAttribute('aria-label',sound?'关闭音效':'开启音效');$('sound').setAttribute('aria-pressed',String(sound));if(sound)tone(true);};
+$('film').onclick=()=>{renderer.film=!renderer.film;arena.classList.toggle('film-off',!renderer.film);$('film').setAttribute('aria-pressed',String(renderer.film));$('film').setAttribute('aria-label',renderer.film?'关闭旧胶片效果':'开启旧胶片效果');};
+$('help').onclick=()=>{if(started&&!game.finished&&!game.pauseReason)pause('help','指南阅读中','关掉指南后，点击继续。');$('help-dialog').showModal();};
+$('close-help').onclick=$('help-done').onclick=()=>$('help-dialog').close();
+function updateHud(){
+  $('score').textContent=String(game.score).padStart(5,'0');$('time').textContent=game.mode==='practice'?'∞':String(Math.ceil(game.remaining)).padStart(2,'0');
+  $('health').textContent=game.mode==='practice'?'♥ ∞':'♥ '.repeat(game.hp)+'♡ '.repeat(5-game.hp);
+  $('mode-name').textContent=game.mode==='practice'?'练习':'●'.repeat(game.wave)+'○'.repeat(5-game.wave);
+  $('combo').textContent=game.combo>1?`×${game.combo}　✿ ${game.kills}`:`✿ ${game.kills}`;
+  for(const [side,h] of Object.entries(hands)){
+    const state=input==='mouse'?'ready':!h.visible?'lost':!h.pose?.gun?'pose':h.trigger.latched?'lower':'ready';
+    $(side+'-status').dataset.state=state;
+    $(side+'-status').textContent=(side==='left'?'L ':'R ')+({ready:'●',lost:'○',pose:'?',lower:'↙'}[state]);
+    $(side+'-status').title={ready:'就绪，抬指开火',lost:'未入镜',pose:'请伸出拇指与食指，中指也可以伸出',lower:'放回原位再抬'}[state];
+  }
+}
 let previous=performance.now();
 function frame(now){
   const dt=Math.min((now-previous)/1000,.08);previous=now;
   if(started&&!game.finished){
-    if(input==='camera'&&!game.pauseReason){
-      if(now-lastResult>1200||now-lastHand>1200){gesture='none';filter.reset();pause('lost-hand','识别暂时中断','计时已暂停。请把手放回画面，并保持张掌。');}
+    if(input==='camera'&&!game.pauseReason&&(now-lastResult>1100||now-lastGun>950))pause('lost-hand','指枪暂时离场','计时已暂停。把手放回画面，摆好指枪即可继续。');
+    if(input==='camera'&&now-lastResult>12000&&game.pauseReason==='lost-hand')showError('识别长时间没有返回结果，请重新连接或使用鼠标。');
+    if(!game.pauseReason){
+      for(const h of Object.values(hands)){
+        if(input==='mouse'){
+          h.desired.x=clamp(h.desired.x+(Number(keys.has('ArrowRight'))-Number(keys.has('ArrowLeft')))*dt*.5);
+          h.desired.y=clamp(h.desired.y+(Number(keys.has('ArrowDown'))-Number(keys.has('ArrowUp')))*dt*.5);
+        }
+        const smoothing=1-Math.exp(-dt*16);h.aim.x+=(h.desired.x-h.aim.x)*smoothing;h.aim.y+=(h.desired.y-h.aim.y)*smoothing;
+      }
+      for(const event of game.tick(dt)){if(event.type==='damage'){renderer.hurt=1;feedback('OUCH!',.7);tone(false);}if(event.type==='finish')finish();}
     }
-    if(input==='camera'&&now-lastResult>12000&&!loading&&game.pauseReason==='lost-hand'){
-      camera.stop();showError('摄像头或识别模型长时间没有返回画面。请重新连接，或改用鼠标体验。');
-    }
-    if(input==='mouse'&&!game.pauseReason){
-      const speed=.5*dt;
-      if(keys.has('ArrowLeft'))desired.x-=speed;if(keys.has('ArrowRight'))desired.x+=speed;
-      if(keys.has('ArrowUp'))desired.y-=speed;if(keys.has('ArrowDown'))desired.y+=speed;
-      desired.x=clamp(desired.x,.03,.97);desired.y=clamp(desired.y,.1,.85);
-      gesture=pressed?'open':game.gesture==='open'?'fist':'none';
-    }
-    const smoothing=1-Math.exp(-dt*(input==='camera'?12:25));
-    aim.x+=(desired.x-aim.x)*smoothing;aim.y+=(desired.y-aim.y)*smoothing;
-    if(gesture==='open'){castAim.x=aim.x;castAim.y=aim.y;}
-    const event=game.tick(dt,gesture);
-    if(event?.type==='cast')cast(event);
-    if(event?.type==='weak')feedback('蓄力还不够 · 张掌或按住稍久一点',1.8);
-    if(event?.type==='finish')finish();
-    $('score').textContent=String(game.score).padStart(4,'0');
-    $('time').textContent=game.mode==='practice'?'练习':String(Math.ceil(game.remaining)).padStart(2,'0');
-    $('combo').textContent='×'+game.combo;
-    $('charge-number').textContent=Math.round(game.charge*100)+'%';$('charge-bar').style.width=game.charge*100+'%';
-    $('spell-state').textContent=game.charge>=.98?'能量已满 · 释放魔法':game.armed?'可以释放 · 继续蓄力更强':game.charge>0?'星光正在凝聚…':input==='camera'?'张开手掌，凝聚魔法':'按住左键或空格，凝聚魔法';
-    $('aim').style.left=aim.x*100+'%';$('aim').style.top=aim.y*100+'%';
-    $('aim').classList.toggle('locked',!!renderer.targetAt(aim));
-    arena.classList.toggle('low-time',game.mode==='challenge'&&game.remaining<=10);
+    updateHud();
   }
   if(now>feedbackUntil)$('feedback').textContent='';
-  renderer.update(dt,started&&!game.pauseReason&&!game.finished,game.mode==='practice');
-  renderer.draw(game,aim,!started);
-  requestAnimationFrame(frame);
+  renderer.update(dt,started&&!game.pauseReason&&!game.finished);renderer.draw(game,hands,!started);requestAnimationFrame(frame);
 }
 requestAnimationFrame(frame);
