@@ -2,6 +2,8 @@
 
 A small first-person gesture-controlled spellcasting game. Open your palm to charge an arcane bolt, aim with your hand, then close your fist to release it and break a floating crystal.
 
+Public source repository: [RainIsMe-git/Assignment3](https://github.com/RainIsMe-git/Assignment3) · branch: **main**.
+
 ![Palm Arcana title screen](docs/screenshot.png)
 
 ## Idea and intended player
@@ -12,7 +14,7 @@ Start with untimed practice. Breaking your first crystal unlocks a 60-second cha
 
 ## Run locally
 
-Run this prototype locally using the steps below. A Sites project was registered, but online publication could not complete because the connector became unavailable while renewing its source credential. No live link is claimed. This does not replace your eventual public GitHub submission.
+Run this prototype locally using the steps below. The source is published on GitHub. A Sites project was also registered, but online game hosting could not complete because the connector became unavailable while renewing its source credential. No live game link is claimed.
 
 Requires **Node.js 20 or newer** and a modern desktop browser. No Python, npm installation, account, API key, or paid service is needed.
 
@@ -99,6 +101,6 @@ npm test
 - Models are not bundled for offline camera use. Mouse mode works without their download.
 - The intended hardware is a desktop/laptop; the page adapts to narrow screens, but mobile gesture performance needs separate testing.
 - **A real user trial is still required.** Record it honestly in `PROCESS.md` and make or justify a design change.
-- **The public GitHub repository submission is still required.** A Sites preview is not a substitute for the assignment's public repository on your own GitHub account. Check the final repository while signed out.
+- **Submit the public repository URL to Canvas after finishing the remaining checks and user trial.** Use [https://github.com/RainIsMe-git/Assignment3](https://github.com/RainIsMe-git/Assignment3) and check it while signed out. The source repository is not a hosted game; follow the run instructions above to play.
 
 See [PROCESS.md](PROCESS.md) and [CREDITS.md](CREDITS.md).

@@ -65,7 +65,9 @@ The project was subsequently merged into the student's newly created `Assignment
 
 ## Hosting status
 
-A private Sites project was registered. Source publication did not complete: the initial short-lived credential expired during development, and the credential-renewal connector then returned an HTTP transport failure. No live deployment or public GitHub repository is claimed. The working local source, screenshots, documentation, and commits are preserved.
+A private Sites project was registered. Its publication did not complete: the initial short-lived credential expired during development, and the credential-renewal connector then returned an HTTP transport failure. No hosted game is claimed.
+
+After the student selected their `RainIsMe-git` account, a public [Assignment3 repository](https://github.com/RainIsMe-git/Assignment3) was created for the source and its retained history on `main`. This provides the source repository required by the brief; the remaining real user trial and Canvas submission are separate steps.
 
 ## Before submission
 
@@ -73,5 +75,5 @@ A private Sites project was registered. Source publication did not complete: the
 - Test the physical webcam, sound toggle, practice, challenge, pause, recovery, and camera shutdown.
 - Follow `README.md` from a fresh terminal.
 - Review the AI disclosure and source credits.
-- Push this project and its existing commits to a public repository on your own GitHub account.
+- Keep the source and development commits updated on the public GitHub repository's `main` branch.
 - Verify the repository while signed out, then submit its URL to Canvas.
