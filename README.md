@@ -16,14 +16,18 @@ Run this prototype locally using the steps below. A Sites project was registered
 
 Requires **Node.js 20 or newer** and a modern desktop browser. No Python, npm installation, account, API key, or paid service is needed.
 
-From a fresh terminal inside this project folder:
+**Windows quick start:** double-click **`Play Palm Arcana.cmd`** in the project folder. It starts the server and opens your default browser automatically. Keep its small console window open while playing; close it or press **Ctrl+C** to stop. Repeated launches reuse the server for this checkout. If another program occupies the usual port, the launcher chooses a free port from 4173–4182. A missing or old Node installation produces an explanation.
+
+You can also create a Windows shortcut to that file, or run `npm run play` from a terminal. The launcher uses its own location, so it works even when the project folder is moved or contains spaces. Local `.lnk` shortcuts are excluded from Git because their absolute paths are specific to one computer.
+
+For a manual start from a fresh terminal inside this project folder:
 
 ```sh
 node --version
 npm start
 ```
 
-Open **http://localhost:4173** in a normal browser tab. Keep the terminal open. Stop the server with **Ctrl+C**. If port 4173 is already in use, stop the other process or change the port in `scripts/serve.mjs`.
+Open **http://localhost:4173** in a normal browser tab. Keep the terminal open. Stop the server with **Ctrl+C**. If port 4173 is already in use, use the double-click launcher instead.
 
 Camera access requires **localhost or HTTPS**. Opening `index.html` directly with `file://` is not supported because the game uses JavaScript modules and a worker. Embedded previews may block camera permissions; use a standalone browser tab.
 
@@ -72,6 +76,8 @@ dist/                Browser source and generated SVG emblem
   camera.mjs         Camera lifecycle and hand preview
   gesture-worker.mjs MediaPipe recognition
 scripts/serve.mjs     Local static server
+scripts/launch.mjs    Auto-open launcher with repeat-launch and port handling
+Play Palm Arcana.cmd Windows double-click entry point
 tests/core.test.mjs   Interaction and interruption tests
 docs/                Screenshots of the running experience
 PROCESS.md           Design decisions, AI use, and genuine user-trial record

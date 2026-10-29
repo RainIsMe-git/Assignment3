@@ -13,6 +13,7 @@ The student selected a game controlled by a real webcam, then chose a first-pers
 5. **Cancel stored charge on interruption.** Tracking loss and pauses clear the charge. To resume camera play, the player must show a stable open palm. This prevents a stale fist from casting immediately on recovery.
 6. **Generate the environment in code.** Perspective projection, crystals, a stylised glove, particles, and the emblem avoid unnecessary downloaded artwork and keep the mouse demo independent of external graphics libraries.
 7. **Repair the inference worker after a real compatibility failure.** A browser test using a fake camera exposed that MediaPipe's WebAssembly loader calls `importScripts`, which is unavailable in a module worker. The worker was changed to a classic worker with a dynamic library import. A second test successfully downloaded the actual model and processed simulated video frames on the CPU.
+8. **Reduce startup steps after student feedback.** The student said that opening a terminal and entering commands was inconvenient, and asked for a shortcut. A Windows double-click launcher now starts the local server and opens the default browser. It reuses an existing instance from the same checkout, selects another port when a different app occupies the default, and explains missing Node.js. This is feedback about setup; it is not a substitute for the other-person gameplay trial.
 
 These are design decisions and implementation checks, **not observations from a human trial**.
 
