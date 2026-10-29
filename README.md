@@ -16,7 +16,7 @@ Run this prototype locally using the steps below. A Sites project was registered
 
 Requires **Node.js 20 or newer** and a modern desktop browser. No Python, npm installation, account, API key, or paid service is needed.
 
-**Windows quick start:** double-click **`Play Palm Arcana.cmd`** in the project folder. It starts the server and opens your default browser automatically. Keep its small console window open while playing; close it or press **Ctrl+C** to stop. Repeated launches reuse the server for this checkout. If another program occupies the usual port, the launcher chooses a free port from 4173–4182. A missing or old Node installation produces an explanation.
+**Windows quick start:** double-click **`Play Palm Arcana.cmd`** in the repository root. A local **`开始游戏`** shortcut, when present, opens the same launcher. It starts the server and opens your default browser automatically. Keep its small console window open while playing; close it or press **Ctrl+C** to stop. Repeated launches reuse the server for this checkout. If another program occupies the usual port, the launcher chooses a free port from 4173–4182. A missing or old Node installation produces an explanation.
 
 You can also create a Windows shortcut to that file, or run `npm run play` from a terminal. The launcher uses its own location, so it works even when the project folder is moved or contains spaces. Local `.lnk` shortcuts are excluded from Git because their absolute paths are specific to one computer.
 

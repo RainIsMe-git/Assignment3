@@ -61,6 +61,8 @@ These are the decisions made in this collaboration. Update this account if later
 
 The initial local commit defines the interaction rules and interruption tests. Subsequent commits add the playable scene and camera integration, then record corrections and validation. This is an actual implementation history, not a reconstructed claim about earlier work.
 
+The project was subsequently merged into the student's newly created `Assignment3` repository on `main`. Both its initial commit and the original game development commits were retained. The source and documentation are at the repository root. A portable double-click `.cmd` entry point is tracked; computer-specific `.lnk` shortcuts are ignored. Launcher checks confirmed that the migrated files serve successfully, launching twice reuses the existing game, and a port occupied by another application is skipped. The original six game-rule tests also pass in the destination repository.
+
 ## Hosting status
 
 A private Sites project was registered. Source publication did not complete: the initial short-lived credential expired during development, and the credential-renewal connector then returned an HTTP transport failure. No live deployment or public GitHub repository is claimed. The working local source, screenshots, documentation, and commits are preserved.
