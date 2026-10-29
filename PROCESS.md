@@ -23,6 +23,7 @@ Verification performed on 29 October 2026:
 - All **6 automated rule tests** passed: charge/release, held-fist repetition, brief input, loss of tracking, pause/resume, round end, and gesture confidence/stability.
 - Chrome browser checks passed for mouse aim/charge/hit, unlocking the challenge, pausing/resuming its timer, help pausing play, returning home, keyboard charging, a blocked-CDN mouse demo, permission-denied feedback and fallback, and a 390px-wide layout without horizontal overflow. No uncaught page errors were observed. Screenshots are in `docs/`.
 - The environment initially blocked loopback access. For the UI checks, Playwright served the project's own assets to the browser using request fulfilment. This verifies browser behaviour and rendering, but does not itself verify an HTTP hosting provider.
+- After the preview server was restarted with the required host permission, an HTTP request to `http://localhost:4173` returned **200**. The documented local server can serve the game.
 - A **fake camera stream with the real MediaPipe library/model** successfully loaded the CPU model, processed frames, and reported no hand in the test pattern. The camera was stopped on exit. This confirms the model loading/inference chain, not accuracy on a physical hand.
 - A **fake stream with deterministic synthetic worker results** completed the full hand-input path: a stable open palm resumed play, charging and a fist hit the crystal, no-hand frames paused play, returning as a fist did not resume, a stable open palm did resume, and returning home released the stream.
 
@@ -58,6 +59,10 @@ These are the decisions made in this collaboration. Update this account if later
 ## Development history
 
 The initial local commit defines the interaction rules and interruption tests. Subsequent commits add the playable scene and camera integration, then record corrections and validation. This is an actual implementation history, not a reconstructed claim about earlier work.
+
+## Hosting status
+
+A private Sites project was registered. Source publication did not complete: the initial short-lived credential expired during development, and the credential-renewal connector then returned an HTTP transport failure. No live deployment or public GitHub repository is claimed. The working local source, screenshots, documentation, and commits are preserved.
 
 ## Before submission
 

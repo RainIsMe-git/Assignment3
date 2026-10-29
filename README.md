@@ -12,7 +12,7 @@ Start with untimed practice. Breaking your first crystal unlocks a 60-second cha
 
 ## Run locally
 
-An owner-private web preview is prepared through Sites; a working localhost run is also available using the steps below. This does not replace your eventual public GitHub submission.
+Run this prototype locally using the steps below. A Sites project was registered, but online publication could not complete because the connector became unavailable while renewing its source credential. No live link is claimed. This does not replace your eventual public GitHub submission.
 
 Requires **Node.js 20 or newer** and a modern desktop browser. No Python, npm installation, account, API key, or paid service is needed.
 
