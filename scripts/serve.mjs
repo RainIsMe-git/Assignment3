@@ -11,9 +11,9 @@ export function createGameServer() {
 return http.createServer(async (req, res) => {
   try {
     const pathname = decodeURIComponent(new URL(req.url, 'http://localhost').pathname);
-    if (pathname === '/__palm_arcana_health') {
+    if (pathname === '/__garden_gunners_health') {
       res.writeHead(200, { 'Content-Type': 'application/json', 'Cache-Control': 'no-store' });
-      res.end(JSON.stringify({ app: 'palm-arcana', instance }));
+      res.end(JSON.stringify({ app: 'garden-gunners', instance }));
       return;
     }
     const path = resolve(root, `.${pathname === '/' ? '/index.html' : pathname}`);

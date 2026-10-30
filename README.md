@@ -8,7 +8,7 @@
 
 需要 Node.js 20+ 和现代桌面浏览器。无需 npm install、账号或 API key。
 
-Windows 双击 **`Play Garden Gunners.cmd`**（或本机的 **`开始游戏.lnk`**）。它会自动启动服务并打开浏览器；保留启动窗口，关闭窗口或 Ctrl+C 停止服务。旧的 `Play Palm Arcana.cmd` 也可启动新版。重复启动会复用当前目录的服务；端口被占用则自动选用 4173–4182。
+Windows 双击 **`Play Garden Gunners.cmd`**（或本机的 **`开始游戏.lnk`**）。它会自动启动服务并打开浏览器；保留启动窗口，关闭窗口或 Ctrl+C 停止服务。重复启动会复用当前目录的服务；端口被占用则自动选用 4173–4182。
 
 也可以在项目目录运行：
 

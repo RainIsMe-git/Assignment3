@@ -6,11 +6,11 @@ import { startServer, instance } from './serve.mjs';
 
 function existingGame(port) {
   return new Promise(done => {
-    const request = http.get({ hostname: '127.0.0.1', port, path: '/__palm_arcana_health', timeout: 800 }, response => {
+    const request = http.get({ hostname: '127.0.0.1', port, path: '/__garden_gunners_health', timeout: 800 }, response => {
       let body = '';
       response.on('data', chunk => { body += chunk; if (body.length > 4096) request.destroy(); });
       response.on('end', () => {
-        try { const value = JSON.parse(body); done(response.statusCode === 200 && value.app === 'palm-arcana' && value.instance === instance); }
+        try { const value = JSON.parse(body); done(response.statusCode === 200 && value.app === 'garden-gunners' && value.instance === instance); }
         catch { done(false); }
       });
       response.on('error', () => done(false));
