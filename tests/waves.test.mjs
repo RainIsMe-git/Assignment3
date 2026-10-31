@@ -27,7 +27,7 @@ test('waves contain exact growing groups, a frozen pause and a real intermission
  for(let wave=1;wave<=5;wave++){
   let defeated=0;
   for(let frame=0;frame<1000&&!g.finished&&g.wave===wave&&g.waveState==='active';frame++){
-   for(const side of ['left','right']){const shot=g.shoot(side,1);if(shot?.killed)defeated++;}
+   for(const side of ['left','right']){const shot=g.shoot(side,1);if(shot){defeated+=Number(shot.killed)+shot.splash.filter(p=>p.killed).length;}}
    g.tick(.1);
   }
   seen.push(defeated);

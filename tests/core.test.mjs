@@ -86,8 +86,8 @@ test('dual guns select separate targets in left-to-right order, not by physical 
 test('charged damage has three levels and defeats a cactus faster',()=>{
   assert.deepEqual([0,.499,.5,.999,1,5].map(chargeDamage),[1,1,2,2,3,3]);
   const g=new GardenGame();g.plants=[];g.nextId=2;g.spawn(0,.6);const plant=g.plants[0];
-  assert.equal(g.shoot('left',1).damage,3);assert.equal(plant.hp,1);assert.ok(plant.depth<.6);
-  assert.equal(g.shoot('right',0).killed,true);assert.equal(g.kills,1);
+  assert.equal(g.shoot('left',1).damage,3);assert.equal(plant.hp,-1);assert.ok(plant.depth<.6);
+  assert.equal(g.shoot('right',0),null);assert.equal(g.kills,1);
 });
 test('simultaneous shots reselect living targets without counting an empty shot',()=>{
   const g=new GardenGame();g.plants[0].hp=1;g.spawn(.6,.1);g.plants[1].hp=3;

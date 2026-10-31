@@ -3,6 +3,7 @@ import {paintGarden} from './backdrop.mjs';
 import {perspectiveHandPaths,gunPlacement} from './hand-art.mjs';
 import {shotStyle} from './combat-feedback.mjs';
 import {HAND_COLORS} from './hand-identity.mjs';
+import {stopHandPaths} from './palm-art.mjs';
 const INK='#29242b', CREAM='#fff2d9', GREEN='#4f8a3c';
 export class GardenRenderer {
   constructor(canvas){
@@ -80,14 +81,9 @@ export class GardenRenderer {
     c.restore();
   }
   stopGlove(side,color,powered){
-    const c=this.c,scale=Math.min(this.w/850,this.h/530),x=this.w*(side==='left'?.24:.76),y=this.h*.86;
-    c.save();c.translate(x,y);c.scale(scale*(side==='left'?1:-1),scale);c.rotate(side==='left'?-.08:.08);
-    this.path('M-39 59 L-72 142 L57 149 L45 60Z','#343039',INK,4);
-    this.path('M-41 56 L-46 78 Q0 99 49 77 L43 55Z',color,INK,4);
-    this.path('M-40 59 C-53 42 -57 23 -66 8 L-85 -21 C-92 -36 -79 -47 -67 -37 L-44 -9 L-49 -83 C-50 -104 -30 -112 -25 -89 L-18 -41 L-17 -111 C-17 -134 5 -135 8 -112 L11 -44 L17 -101 C20 -123 41 -118 40 -96 L36 -35 L45 -76 C50 -93 69 -87 64 -67 L58 -9 C56 22 54 43 39 61 Q0 80 -40 59Z','#fff1d9',INK,4);
-    this.path('M-36 45 Q4 61 42 42 Q42 61 14 67 Q-19 68 -36 54Z','#d7c6b0',null,0);
-    this.path('M-28 2 Q-9 -8 13 -3 M-24 15 Q-5 6 17 9 M-17 29 Q1 21 20 24',null,'#998474',2.5);
-    this.path('M-42 57 Q0 76 43 55 L45 68 Q0 89 -45 70Z','#fff1d9',INK,3);
+    const c=this.c,scale=Math.min(this.w/850,this.h/530),x=this.w*(side==='left'?.24:.76),y=this.h*.83;
+    c.save();c.translate(x,y);c.rotate(side==='left'?-.10:.10);c.scale(scale*(side==='left'?1:-1),scale);
+    for(const [path,fill,width,stroke] of stopHandPaths(color))this.path(path,fill,width?stroke||INK:null,width);
     if(powered){c.strokeStyle=powered===2?'#b38aca':'#77d1c6';c.lineWidth=3;for(let i=0;i<2;i++){c.beginPath();c.ellipse(0,-8,69+i*13,53+i*12,0,0,Math.PI*2);c.stroke();}}
     c.restore();
   }
@@ -95,14 +91,16 @@ export class GardenRenderer {
     const idle=this.reducedMotion?0:Math.sin(this.t*2.2+(event.hand==='left'?0:1.6))*2;
     const gun=gunPlacement(event.hand,hand.aim,this.w,this.h,0,idle);
     const style=shotStyle(event.damage);this.recoil[event.hand]=.65+event.damage*.23;this.effects.push({...event,aim:{...event.aim},origin:gun.muzzle,bearing:gun.bearing,life:0,duration:style.duration});
+    for(const impact of event.splash||[])this.effects.push({...impact,hand:event.hand,splashOnly:true,explosive:true,origin:gun.muzzle,bearing:gun.bearing,life:0,duration:style.duration});
     if(event.hit){for(let i=0;i<style.particles;i++)this.effects.push({particle:true,x:event.aim.x,y:event.aim.y,vx:(Math.random()-.5)*(.14+event.damage*.07),vy:(Math.random()-.7)*(.18+event.damage*.06),life:-style.flight,duration:.35+event.damage*.12,size:2+event.damage,leaf:event.killed&&i%3===0,color:[style.color,style.light,'#6d934c'][i%3]});}
   }
   clear(){this.effects=[];this.hurt=0;this.recoil={left:0,right:0};}
   update(dt,running){this.t+=dt;for(const k of ['left','right'])this.recoil[k]=Math.max(0,this.recoil[k]-dt*5);this.hurt=Math.max(0,this.hurt-dt*2);if(running)for(const fx of this.effects)fx.life+=dt;this.effects=this.effects.filter(e=>e.life<e.duration);}
   drawShot(fx,hands){
-    const c=this.c,w=this.w,h=this.h,style=shotStyle(fx.damage),origin={x:fx.origin.x*w,y:fx.origin.y*h},end={x:fx.aim.x*w,y:fx.aim.y*h};
+    const c=this.c,w=this.w,h=this.h,style={...shotStyle(fx.damage),...(fx.explosive?{color:'#ef713a',light:'#fff3b2',impact:fx.splashOnly?26:54,rings:3,trail:9}:{})},origin={x:fx.origin.x*w,y:fx.origin.y*h},end={x:fx.aim.x*w,y:fx.aim.y*h};
+    if(fx.splashOnly&&fx.life<style.flight)return;
     c.save();
-    if(fx.life<.11){
+    if(!fx.splashOnly&&fx.life<.11){
       const idle=this.reducedMotion?0:Math.sin(this.t*2.2+(fx.hand==='left'?0:1.6))*2;
       const gun=gunPlacement(fx.hand,hands[fx.hand].aim,w,h,this.reducedMotion?0:this.recoil[fx.hand],idle);
       c.save();c.translate(gun.muzzle.x*w,gun.muzzle.y*h);c.rotate(gun.bearing);c.scale(.7+fx.damage*.35,.7+fx.damage*.35);
@@ -128,6 +126,10 @@ export class GardenRenderer {
       const p=projectPlant(fx.plant),fade=1-impactTime/.2;c.save();c.globalAlpha=fade;c.translate(end.x,end.y);c.rotate((fx.hand==='left'?-1:1)*impactTime*2);this.plant(0,-impactTime*80,p.size*h*.65*(.8+fade*.2),fx.type,this.t,.12,fx.plant.seed);c.restore();
     }
     c.translate(end.x,end.y);c.globalAlpha=1-t;
+    if(fx.explosive&&!fx.splashOnly){
+      const reach=Math.min(1,impactTime/.16),rx=fx.radius*w*reach,ry=fx.radius*h/1.3*reach;
+      this.ellipse(0,0,rx,ry,'#ed74382a','#ef9b40',4);this.ellipse(0,0,rx*.88,ry*.88,null,'#ffe5a5',2);
+    }
     for(let i=0;i<style.rings;i++){
       const phase=clamp((impactTime-i*.055)/.35);if(impactTime<i*.055)continue;
       c.globalAlpha=(1-phase)*.8;c.strokeStyle=i%2?style.light:style.color;c.lineWidth=(1-phase)*(fx.damage===3?4:2)+1;
@@ -136,7 +138,7 @@ export class GardenRenderer {
     c.globalAlpha=1-t;const r=style.impact*(.75+t*.45);c.rotate(-.12);
     c.beginPath();for(let i=0;i<16;i++){const a=i*Math.PI/8,rr=i%2?r*.45:r;c.lineTo(Math.cos(a)*rr,Math.sin(a)*rr);}c.closePath();c.fillStyle=style.color;c.fill();c.strokeStyle=INK;c.lineWidth=2.2;c.stroke();
     c.fillStyle=style.light;c.beginPath();for(let i=0;i<12;i++){const a=i*Math.PI/6,rr=(i%2?.3:.57)*r;c.lineTo(Math.cos(a)*rr,Math.sin(a)*rr);}c.closePath();c.fill();
-    c.fillStyle=INK;c.textAlign='center';c.font='italic 900 '+(12+fx.damage*3)+'px Georgia';c.fillText(['PIP!','POW!','KABOOM!'][fx.damage-1],0,6);
+    c.fillStyle=INK;c.textAlign='center';c.font='italic 900 '+(12+fx.damage*3)+'px Georgia';c.fillText(fx.explosive?'BOOM!':['PIP!','POW!','KABOOM!'][fx.damage-1],0,6);
     c.font='bold '+(14+fx.damage*3)+'px Georgia';c.fillStyle=style.light;c.strokeStyle=INK;c.lineWidth=3;c.strokeText('−'+fx.damage,0,-r-10-t*25);c.fillText('−'+fx.damage,0,-r-10-t*25);
     if(fx.killed){c.font='bold 12px Georgia';c.fillStyle=INK;c.fillText('+'+fx.points,0,r+20);}
     c.restore();
@@ -161,7 +163,7 @@ export class GardenRenderer {
       for(const fx of this.effects)if(fx.plant&&fx.life<shotStyle(fx.damage).flight&&!pending.has(fx.targetId))pending.set(fx.targetId,fx.plant);
       const plants=[...game.plants.filter(p=>!pending.has(p.id)),...pending.values()];
       for(const plant of plants.sort((a,b)=>a.depth-b.depth)){
-        const p=projectPlant(plant),impact=this.effects.some(f=>f.targetId===plant.id&&f.life>=shotStyle(f.damage).flight&&f.life<shotStyle(f.damage).flight+.13);this.plant(p.x*w,p.y*h,p.size*h*.65,plant.type,this.t,impact?.15:pending.has(plant.id)?0:plant.flash,plant.seed);
+        const p=projectPlant(plant),impact=this.effects.some(f=>f.targetId===plant.id&&f.life>=shotStyle(f.damage).flight&&f.life<shotStyle(f.damage).flight+.13);this.plant(p.x*w,p.y*h,p.size*h*.65,plant.type,game.enemyTime,impact?.15:pending.has(plant.id)?0:plant.flash,plant.seed);
         if(!plant.boss)for(let i=0;i<plant.maxHp;i++)this.ellipse(p.x*w+(i-(plant.maxHp-1)/2)*9,p.y*h-p.size*h*.79,2.7,2.7,i<plant.hp?CREAM:'#54482c55',INK,1);
         if(game.palm?.active)this.ellipse(p.x*w,p.y*h+p.size*h*.65,p.size*h*.5,8,null,game.palm.active===2?'#ae88c4':'#65c6bb',2.5);
       }
@@ -180,10 +182,13 @@ export class GardenRenderer {
           this.ellipse(0,0,2,2,CREAM,color,1);c.restore();
         }
         this.glove(gun.x,gun.y,gun.scale,gun.angle,side,color,hand.visible?1:.24);
+        if(hand.visible&&game.burstRemaining>0){
+          const mx=gun.muzzle.x*w,my=gun.muzzle.y*h;c.save();c.translate(mx,my);c.rotate(this.reducedMotion?0:this.t);this.path('M-20 0 L-9 -7 L-8 -22 L2 -13 L17 -20 L12 -5 L25 2 L12 10 L14 24 L0 15 L-14 23 L-11 8Z','#ed713a','#ffc65a',2);this.ellipse(0,0,7,7,'#fff1c3',null);c.restore();
+        }
         if(hand.visible && hand.charge>.025){
           const q=hand.charge,full=q>=.999,mx=gun.muzzle.x*w,my=gun.muzzle.y*h;
           const pulse=this.reducedMotion?0:Math.sin(this.t*5)*1.5;
-          const r=(7+q*13+(full?pulse:0))*Math.min(1,gun.scale),style=shotStyle(chargeDamage(q)),glow=style.color;
+          const r=(7+q*13+(full?pulse:0))*Math.min(1,gun.scale),style=shotStyle(game.burstRemaining>0?3:chargeDamage(q)),glow=style.color;
           c.save();c.translate(mx,my);
           const halo=c.createRadialGradient(0,0,2,0,0,r*2.8);halo.addColorStop(0,style.light+'dd');halo.addColorStop(.32,glow+'88');halo.addColorStop(1,glow+'00');c.fillStyle=halo;c.beginPath();c.arc(0,0,r*2.8,0,Math.PI*2);c.fill();
           // Inked energy flecks spiral inward instead of a barely visible halo.

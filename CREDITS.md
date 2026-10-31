@@ -10,6 +10,7 @@
 - **三维识别参考：** [MediaPipe 手部关键点说明](https://developers.google.com/edge/mediapipe/solutions/vision/hand_landmarker/web_js)，用于区分图像归一化坐标和以米为单位的世界坐标、修正宽高比并处理指尖朝镜头的透视缩短。
 - **左右手映射修订：** 上一轮参考了 [旧版 MediaPipe Hands 文档](https://github.com/google-ai-edge/mediapipe/blob/master/docs/solutions/hands.md) 的镜像标签说明并额外交换左右；玩家截图反馈表明该假设不适用于本项目当前 Tasks Vision 输入路径。本轮撤销额外交换，预览和开枪共用最终跟踪身份，并以连续位置匹配降低标签偶发翻转的影响。合成检查只验证程序对应关系，实际摄像头仍待玩家复测。
 - **字体：** 本机系统字体，无远程字体。
+- **张掌参考：** 用户本轮提供的简洁张手轮廓和卡通白手套图；按要求改为手背朝玩家、拇指向内的左右手。图形为共享 Canvas / SVG 路径，没有将参考截图打包为贴图。
 - **背景音乐：** 用户提供的 `ES_Well I Just Don't Care - Stationary Sign.wav`（Stationary Sign / Epidemic Sound），转换为 `garden-jazz.mp3`，保留完整曲目并处理两端淡入淡出。
 - **射击录音：** 用户提供的 Epidemic Sound 文件：`ES_Lasers, Gun, Fire, Shoot, Discharge, Singular`、`ES_Lasers, Gun, Plasma Blaster, Shoot, Fire, Single Rounds, Dull`、`ES_Lasers, Gun, Fire, Shoot, Powerful, Exhaust, Steam, Scifi, Variations`（原文件均为 `.wav`，后缀为 ` - Epidemic Sound`）。分别截取为轻、中、重枪声；蓄力循环从 Powerful 录音中截取、倒放并滤波，随蓄力改变音高与音量。来源署名不代表授予这些第三方录音新的许可。
 - **音频加工：** FFmpeg / libmp3lame；加工脚本在 `scripts/prepare-audio.py`。浏览器使用 Web Audio 播放，并合成满蓄力双音提示和短促受击声。

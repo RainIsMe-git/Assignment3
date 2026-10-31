@@ -1,4 +1,4 @@
-export const MAX_ENERGY=5, ENERGY_REGEN=.65, DOUBLE_DRAIN=1.6;
+export const MAX_ENERGY=10, ENERGY_REGEN=1, DOUBLE_DRAIN=1.6;
 export function readStopPose(points,world,aspect=1){
   if(!points||points.length!==21)return false;
   const valid=p=>p?.length===21&&p.every(v=>Number.isFinite(v.x)&&Number.isFinite(v.y)&&Number.isFinite(v.z??0));
