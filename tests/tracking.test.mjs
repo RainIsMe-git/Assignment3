@@ -29,10 +29,11 @@ test('a reappearing raised hand does not fire, and low confidence does not erase
   assert.deepEqual(tracking.update([observation(.2,.07)],960).shots,[]);
   assert.equal(tracking.slots.left.trigger.charge,charge);
 });
-test('a slightly bent thumb is tolerated briefly only after a clear gun pose',()=>{
+test('a relaxed thumb arms immediately and stays active without a strict pose',()=>{
   const weak=observation(.2);weak.landmarks[4]={x:.57,y:.59};
-  assert.equal(readGunPose(weak.landmarks).gun,false);assert.equal(readGunPose(weak.landmarks).relaxedGun,true);
-  const tracking=new HandTracking();assert.equal(tracking.update([weak],0).valid,0);
-  tracking.update([observation(.2)],80);assert.equal(tracking.update([weak],160).valid,1);
-  assert.equal(tracking.update([weak],900).valid,0);
+  assert.equal(readGunPose(weak.landmarks).gun,true);
+  const tracking=new HandTracking();assert.equal(tracking.update([weak],0).valid,1);
+  for(let now=80;now<=800;now+=80)assert.equal(tracking.update([weak],now).valid,1);
+  const lifted=structuredClone(weak);lifted.landmarks[8].y-=.04;
+  assert.equal(tracking.update([lifted],880).shots.length,1);
 });

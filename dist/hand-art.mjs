@@ -23,50 +23,52 @@ export function handPaths(variant='two',cuff='#4c8a87'){
   ];
 }
 
-// First-person back-of-hand view. The broad wrist is nearest the viewer;
-// the tapered index recedes into the garden. These are deliberately separate
-// from the side-on instructional icons above.
-export const VIEW_FINGERTIP={x:0,y:-76};
+// Three-quarter finger-gun silhouette: upright thumb, rounded pointing index,
+// and three overlapping curled fingers. Warm ivory gloves keep the cel style.
+export const VIEW_FINGERTIP={x:92,y:-64};
+export const VIEW_FINGER_BASE={x:17,y:-18};
 export function perspectiveHandPaths(variant='two',cuff='#4c8a87'){
   return [
-    ['M-37 57 Q-47 99 -63 145 L48 145 Q31 103 31 56Z','#343039',3.5],
-    ['M-37 57 Q-3 69 31 56 L34 79 Q-4 91 -43 78Z',cuff,3.5],
-    ['M-38 57 Q-47 29 -40 8 Q-34 -10 -20 -12 Q-3 -14 13 -6 C27 -8 38 5 38 20 Q42 41 27 62 Q-4 76 -38 57Z','#fff6e3',3.5],
-    ['M-38 28 Q-30 54 -5 58 Q15 62 31 46 L27 62 Q-4 76 -38 57 Q-43 42 -38 28Z','#c8beb8',0],
-    // Receding index: wider at the near knuckle, narrower at its distant tip.
-    ['M-24 12 C-25 -5 -19 -22 -13 -39 L-9 -66 Q-8 -76 0 -76 Q9 -76 10 -66 L12 -41 C19 -23 22 -7 15 9 Q-4 20 -24 12Z','#fff6e3',3.3],
-    ['M7 -64 L9 -40 Q19 -15 14 7 L7 11 Q10 -14 3 -38Z','#d4cac1',0],
-    ['M-9 -37 Q0 -42 10 -37 M-13 -19 Q0 -24 14 -18',null,1.7,'#9e918a'],
-    ['M-5 -66 Q-3 -71 1 -71',null,2,'#ffffff'],
+    ['M-42 64 L-78 139 L33 155 L36 69Z','#343039',4],
+    ['M-44 54 Q-7 73 36 62 L40 85 Q-5 96 -54 75Z',cuff,4],
+    // Continuous thumb/palm/index contour, with a generous negative-space web.
+    ['M-43 57 C-46 37 -43 16 -39 -2 C-35 -20 -32 -37 -32 -57 C-33 -76 -28 -95 -18 -101 C-9 -108 2 -101 5 -91 C10 -73 3 -53 -2 -37 C-5 -27 -4 -21 4 -20 C24 -29 48 -43 68 -57 C78 -65 88 -69 92 -64 C100 -56 93 -44 82 -36 L39 -6 C48 9 50 30 43 45 C33 66 13 78 -8 74 C-23 70 -35 65 -43 57Z','#fff3dc',4.5],
+    ['M-42 45 Q-15 66 5 65 Q28 62 39 45 L43 45 Q33 68 10 75 Q-12 81 -43 57Z','#d3bfa7',0],
+    // The pointing finger has one rounded tip and one understated knuckle crease.
+    ['M21 -15 Q32 -12 37 -5',null,2.6],
+    ['M56 -39 Q69 -47 79 -54',null,2,'#fffdf0'],
+    ['M-22 -88 Q-18 -96 -13 -92',null,2.5,'#fffdf0'],
+    // Curled fingers overlap the palm from top to bottom, not extra knuckles
+    // floating on the back of the index.
     ...(variant==='three'?[
-      ['M-39 16 Q-40 -3 -34 -20 L-26 -51 Q-23 -60 -16 -58 Q-9 -57 -10 -48 L-15 -17 Q-10 -3 -14 13Z','#fff6e3',3],
-      ['M-31 -14 Q-24 -18 -16 -14',null,1.7,'#9e918a'],
+      ['M17 6 Q39 -3 60 -14 C72 -21 81 -20 81 -11 C80 -3 62 7 46 14 L22 23Z','#fff3dc',3.5],
     ]:[
-      ['M-37 8 Q-33 -3 -23 1 Q-14 5 -16 18 L-20 29 Q-31 36 -39 25Z','#fff6e3',3],
-      ['M-34 9 Q-27 6 -23 11',null,1.7,'#9e918a'],
+      ['M16 3 C33 -1 51 4 53 15 C54 27 42 32 27 28 L10 23 Q5 14 16 3Z','#fff3dc',3.5],
+      ['M21 8 Q32 6 39 11',null,1.8,'#bc9e87'],
     ]),
-    ['M-39 28 Q-35 16 -24 21 Q-16 25 -20 37 Q-27 45 -37 40Z','#fff6e3',2.8],
-    ['M-35 43 Q-28 32 -19 39 Q-14 45 -21 53 Q-29 57 -35 51Z','#fff6e3',2.7],
-    // Raised thumb on the inside of each hand, seen over the dorsal web.
-    ['M15 28 Q17 10 27 -3 L32 -22 C34 -33 44 -34 48 -25 Q51 -17 46 -7 L40 13 Q41 27 31 38 Q21 45 10 40','#fff6e3',3.2],
-    ['M33 0 Q39 -1 44 3 M18 24 Q24 19 31 21',null,1.8,'#9e918a'],
-    // Three glove seams converge toward the distant knuckles.
-    ['M-12 49 L-10 32 M-2 51 L0 30 M8 49 L10 33',null,2.3],
-    ['M-30 62 Q-3 72 22 62',null,1.6,'#9e918a'],
+    ['M10 26 Q30 32 44 29 C53 30 51 42 42 47 C28 52 14 44 6 40 Q2 32 10 26Z','#fff3dc',3.3],
+    ['M7 43 Q24 52 38 47 C46 50 40 61 32 63 Q17 66 3 54Z','#fff3dc',3.1],
+    ['M-20 -20 Q-8 -9 3 -9 M-25 38 Q-15 46 -6 46',null,2.3],
+    ['M-30 28 l11 7 M-28 18 l13 7 M-25 9 l13 7',null,2.2],
   ];
 }
 
-export function gunPlacement(side,aim,w,h,recoil=0){
-  const scale=Math.min(w/850,h/500);
-  // Wrists enter from the bottom, with only a small lateral follow. The
-  // pointing axis converges on the enemy instead of sliding side-on across it.
-  const x=w*((side==='left'?.30:.70)+(aim.x-.5)*.08);
-  const y=h*Math.max(.89,aim.y+.18);
-  const bearing=Math.atan2(aim.y*h-y,aim.x*w-x);
-  const reach=Math.min(-VIEW_FINGERTIP.y*scale,Math.hypot(aim.x*w-x,aim.y*h-y)*.5);
-  const actualScale=reach/-VIEW_FINGERTIP.y;
-  const kick=recoil*12*scale;
-  return {x:x-Math.cos(bearing)*kick,y:y-Math.sin(bearing)*kick,scale:actualScale,
-    angle:bearing+Math.PI/2,bearing,
-    muzzle:{x:(x+Math.cos(bearing)*(reach-kick))/w,y:(y+Math.sin(bearing)*(reach-kick))/h}};
+export function gunPlacement(side,aim,w,h,recoil=0,idle=0){
+  const sign=side==='left'?1:-1;
+  const scale=Math.min(w/850,h/530);
+  const x=w*(side==='left'?.24:.76)+(aim.x-.5)*w*.025;
+  const y=h*Math.max(.86,aim.y+.18)+idle*scale;
+  const dx=VIEW_FINGERTIP.x-VIEW_FINGER_BASE.x,dy=VIEW_FINGERTIP.y-VIEW_FINGER_BASE.y;
+  const length=Math.hypot(dx,dy),ux=dx/length*sign,uy=dy/length;
+  const targetDistance=Math.hypot(aim.x*w-x,aim.y*h-y);
+  const actualScale=Math.min(scale,targetDistance/(length*2));
+  const offset=(ux*VIEW_FINGERTIP.y-uy*VIEW_FINGERTIP.x*sign)*actualScale;
+  const restingAngle=Math.atan2(aim.y*h-y,aim.x*w-x)-Math.atan2(uy,ux)-Math.asin(Math.max(-.9,Math.min(.9,offset/Math.max(1,targetDistance))));
+  const kick=Math.max(0,Math.min(1.35,recoil));
+  const angle=restingAngle-sign*kick*.22;
+  const px=x-sign*kick*7*scale,py=y+kick*12*scale;
+  const size=actualScale*(1+kick*.035),cos=Math.cos(angle),sin=Math.sin(angle);
+  const tipX=VIEW_FINGERTIP.x*sign*size,tipY=VIEW_FINGERTIP.y*size;
+  return {x:px,y:py,scale:size,angle,bearing:angle+Math.atan2(uy,ux),
+    muzzle:{x:(px+cos*tipX-sin*tipY)/w,y:(py+sin*tipX+cos*tipY)/h}};
 }

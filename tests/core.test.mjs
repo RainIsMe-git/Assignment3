@@ -35,10 +35,10 @@ test('small landmark jitter does not shoot and a newly raised pose is not a shot
 test('a flick returns charge independently of hand aim',()=>{
   const t=new GunTrigger();arm(t);assert.equal(t.sample({...pose(.4),aim:{x:.9,y:.1}},240).charge,.04);
 });
-test('landmark classifier accepts a finger gun but rejects an open palm',()=>{
+test('index tracking also accepts an open palm without requiring a perfect gun',()=>{
   const p=landmarks();assert.equal(readGunPose(p).gun,true);
   for(const i of [9,13,17]){p[i+1].y=.48;p[i+2].y=.44;p[i+3].y=.4;}
-  assert.equal(readGunPose(p).gun,false);assert.equal(readGunPose([]),null);
+  assert.equal(readGunPose(p).gun,true);assert.equal(readGunPose([]),null);
 });
 test('translating the whole hand changes aim but not trigger lift',()=>{
   const p=landmarks(),a=readGunPose(p),b=readGunPose(p.map(v=>({...v,x:v.x+.1,y:v.y-.1})));
@@ -49,14 +49,15 @@ test('both requested gun shapes are accepted: thumb/index and thumb/index/middle
   p[10]={x:.49,y:.48};p[11]={x:.48,y:.44};p[12]={x:.47,y:.40};
   assert.equal(readGunPose(p).gun,true);assert.equal(readGunPose(p).variant,'three');
 });
-test('folded thumb, horns, and an open ring or pinky finger are rejected',()=>{
-  const folded=landmarks();folded[3]={x:.44,y:.60};folded[4]={x:.48,y:.62};assert.equal(readGunPose(folded).gun,false);
-  for(const finger of [13,17]){const p=landmarks();p[finger+1].y=.48;p[finger+2].y=.44;p[finger+3].y=.40;assert.equal(readGunPose(p).gun,false);}
+test('thumb and unused fingers never reject an otherwise trackable index',()=>{
+  const folded=landmarks();folded[3]={x:.44,y:.60};folded[4]={x:.48,y:.62};assert.equal(readGunPose(folded).gun,true);
+  for(const finger of [13,17]){const p=landmarks();p[finger+1].y=.48;p[finger+2].y=.44;p[finger+3].y=.40;assert.equal(readGunPose(p).gun,true);}
 });
-test('changing between two- and three-finger guns recalibrates without firing',()=>{
+test('changing middle-finger pose does not interrupt charge or the index flick',()=>{
   const t=new GunTrigger();arm(t);
-  assert.equal(t.sample({...pose(.4),variant:'three'},240),null);
-  assert.equal(t.ready,false);assert.equal(t.variant,'three');
+  assert.equal(t.sample({...pose(),variant:'three'},240),null);
+  assert.equal(t.ready,true);assert.equal(t.variant,'three');
+  assert.ok(t.sample({...pose(.2),variant:'two'},320));
 });
 test('gun shape classification is stable under mirror, rotation and distance scaling',()=>{
   const p=landmarks();
@@ -123,4 +124,11 @@ test('long tracking loss and explicit pause reset stored charge',()=>{
   const t=new GunTrigger();arm(t);for(let time=240;time<=800;time+=80)t.sample(pose(),time);assert.ok(t.charge>0);
   t.miss(1600);assert.equal(t.charge,0);assert.equal(t.sample(pose(.6),1700),null);
   arm(t,1800);t.sample(pose(),2040);t.reset();assert.equal(t.charge,0);assert.equal(t.ready,false);
+});
+
+test('a smaller upward lift fires and a partial return rearms without repeating while held',()=>{
+ const t=new GunTrigger();arm(t);assert.ok(t.sample(pose(.19),240));
+ for(let n=320;n<=640;n+=80)assert.equal(t.sample(pose(.20),n),null);
+ t.sample(pose(.04),720);t.sample(pose(.04),800);t.sample(pose(.04),880);
+ assert.ok(t.sample(pose(.22),960));
 });

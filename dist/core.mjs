@@ -12,41 +12,18 @@ export function readGunPose(points, worldPoints, aspectRatio=1) {
   if(palmSize<.0001)return null;
   const chain=(a,b,c,d)=>distance(metric[a],metric[d])/(distance(metric[a],metric[b])+distance(metric[b],metric[c])+distance(metric[c],metric[d])+palmSize*.0001);
   const reach=(a,d)=>distance(metric[a],metric[d])/palmSize;
-  const finger=(a)=>({straight:chain(a,a+1,a+2,a+3),reach:reach(a,a+3)});
-  const fingers=[5,9,13,17].map(finger);
+  // Only the index gates input. Thumb/ring/pinky placement no longer rejects
+  // a tracked hand: the deliberate upward motion is the firing gesture.
+  const indexReach=reach(5,8), indexStraight=chain(5,6,7,8);
+  const gun=indexReach>.28 && indexStraight>.50;
+  const relaxedGun=indexReach>.23 && indexStraight>.40;
+  const middle=chain(9,10,11,12)>.75 && reach(9,12)>.43;
   const towardCamera=(metric[5].z-metric[8].z)/palmSize;
-  // A forward-pointing index can occupy almost no screen area. Its depth
-  // and 3D chain, not its projected length, distinguish it from a closed fist.
-  if(valid3D || towardCamera>.35){
-    const extended=f=>f.straight>.76&&f.reach>.43;
-    const folded=f=>f.straight<.76 || f.reach<.42;
-    const thumb=chain(1,2,3,4)>.72 && reach(2,4)>.29 && reach(4,5)>.30;
-    const index=extended(fingers[0]) || (towardCamera>.45&&fingers[0].straight>.67&&fingers[0].reach>.50);
-    const middle=extended(fingers[1]);
-    const others=folded(fingers[2])&&folded(fingers[3]);
-    const gun=thumb&&index&&(middle||folded(fingers[1]))&&others;
-    const relaxedGun=chain(1,2,3,4)>.62&&reach(2,4)>.23&&reach(4,5)>.25&&fingers[0].straight>.64&&fingers[0].reach>.38&&others;
-    const axisLength=distance(metric[5],metric[8]);
-    return {gun,relaxedGun,variant:middle?'three':'two',source:valid3D?'world':'depth',
-      // Pitch of the pointing finger in camera space; translation and distance
-      // from the webcam cannot produce a shot. Upward recoil increases pitch.
-      lift:(metric[5].y-metric[8].y)/Math.max(axisLength,palmSize*.3)*1.25,
-      aim:{x:clamp(1-points[0].x,.06,.94),y:clamp(points[0].y,.22,.78)}};
-  }
-  const scale = distance(points[0],points[9]);
-  if (scale < .025) return null;
-  const straight = (a,b,c,d) => distance(points[a],points[d]) / (distance(points[a],points[b])+distance(points[b],points[c])+distance(points[c],points[d])+.00001);
-  const extended = (a,b,c,d) => straight(a,b,c,d)>.82 && distance(points[d],points[a])>scale*.48;
-  const curled = (a,b,c,d) => straight(a,b,c,d)<.79 || distance(points[d],points[0])<distance(points[b],points[0])*1.06;
-  // Thumb must be extended AND separated from the index knuckle; simply
-  // pointing with a folded thumb is not a gun. All distances are palm-relative.
-  const thumb = straight(1,2,3,4)>.80 && distance(points[4],points[2])>scale*.36 && distance(points[4],points[5])>scale*.38;
-  const index = extended(5,6,7,8), middle = extended(9,10,11,12);
-  const gun = thumb && index && (middle || curled(9,10,11,12)) && curled(13,14,15,16) && curled(17,18,19,20);
-  const palm=[0,5,9,13,17].map(i=>points[i]);
-  const relaxedGun=straight(1,2,3,4)>.68 && distance(points[4],points[2])>scale*.27 && distance(points[4],points[5])>scale*.30 && straight(5,6,7,8)>.72 && distance(points[8],points[5])>scale*.38 && curled(13,14,15,16) && curled(17,18,19,20);
-  return {gun, relaxedGun, variant:middle?'three':'two', lift:(points[5].y-points[8].y)/scale,
-    aim:{x:clamp((1-palm.reduce((s,p)=>s+p.x,0)/5-.14)/.72,.06,.94),y:clamp((palm.reduce((s,p)=>s+p.y,0)/5-.18)/.67,.22,.78)}};
+  const spatial=valid3D||towardCamera>.35;
+  const imageScale=Math.max(distance(points[0],points[9]),.025);
+  return {gun,relaxedGun,variant:middle?'three':'two',source:valid3D?'world':spatial?'depth':'image',
+    lift:spatial?(metric[5].y-metric[8].y)/Math.max(distance(metric[5],metric[8]),palmSize*.3)*1.25:(points[5].y-points[8].y)/imageScale,
+    aim:{x:clamp(1-points[0].x,.06,.94),y:clamp(points[0].y,.22,.78)}};
 }
 
 // Relative upward flick, not an absolute pose. Translating the entire hand
@@ -55,7 +32,7 @@ export const CHARGE_MS=2000, TRACKING_GRACE_MS=750;
 export const chargeDamage=charge=>1+Math.floor(clamp(charge)*2+.000001);
 export class GunTrigger {
   constructor(){this.reset();}
-  reset(){this.base=null;this.since=0;this.last=null;this.ready=false;this.latched=false;this.cooldownUntil=0;this.variant=null;this.source=null;this.chargeMs=0;this.interrupted=false;}
+  reset(){this.base=null;this.since=0;this.last=null;this.ready=false;this.latched=false;this.peak=0;this.cooldownUntil=0;this.variant=null;this.source=null;this.chargeMs=0;this.interrupted=false;}
   get charge(){return clamp(this.chargeMs/CHARGE_MS);}
   miss(time){
     this.interrupted=true;
@@ -67,13 +44,14 @@ export class GunTrigger {
     if(gap>TRACKING_GRACE_MS)this.reset();
     const variant=pose.variant||'two';
     const source=pose.source||'image';
-    const reacquired=this.interrupted||gap>220||(this.variant&&this.variant!==variant)||(this.source&&this.source!==source);
+    const reacquired=this.interrupted||gap>220||(this.source&&this.source!==source);
     this.interrupted=false;this.variant=variant;this.source=source;this.last=time;
     if(this.base===null){this.base=pose.lift;this.since=time;return null;}
     // Never infer a flick from motion that happened during an occlusion.
     if(reacquired){if(!this.latched)this.base=pose.lift;this.ready=false;this.since=time;return null;}
     if(this.latched){
-      if(pose.lift<this.base+.12 && time>=this.cooldownUntil){this.latched=false;this.ready=false;this.since=time;this.base=pose.lift;}
+      this.peak=Math.max(this.peak,pose.lift);
+      if(pose.lift<this.peak-.14 && time>=this.cooldownUntil){this.latched=false;this.ready=false;this.since=time;this.base=pose.lift;}
       return null;
     }
     if(!this.ready){
@@ -81,8 +59,8 @@ export class GunTrigger {
       this.ready=time-this.since>=120;return null;
     }
     this.chargeMs=Math.min(CHARGE_MS,this.chargeMs+Math.max(0,Math.min(gap,200)));
-    if(pose.lift-this.base>.24 && time>=this.cooldownUntil){
-      const shot={charge:this.charge};this.chargeMs=0;this.latched=true;this.cooldownUntil=time+230;return shot;
+    if(pose.lift-this.base>.16 && time>=this.cooldownUntil){
+      const shot={charge:this.charge};this.chargeMs=0;this.latched=true;this.peak=pose.lift;this.cooldownUntil=time+230;return shot;
     }
     this.base=Math.min(this.base,pose.lift);return null;
   }

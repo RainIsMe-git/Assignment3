@@ -33,7 +33,7 @@ function start(mode){
 function home(){
   setupGeneration++;camera.stop();input='none';started=false;loading=false;resetInput();game.reset();renderer.clear();
   for(const id of ['game-hud','bottom-hud','camera-panel','pause-overlay','result-overlay','error-box','loading'])$(id).hidden=true;
-  $('intro').hidden=false;$('poster-stamp').hidden=false;$('feedback').textContent='';feedbackKey='';arena.classList.remove('playing');
+  $('intro').hidden=false;$('poster-stamp').hidden=false;$('feedback').textContent='';feedbackKey='';arena.classList.remove('playing','tracking-lost');
 }
 function pauseCopy(){
   const keys=game.pauseReason==='lost-hand'?['lostTitle','lostTextPause']:game.pauseReason==='help'?['helpPauseTitle','helpPauseText']:game.pauseReason==='background'?['backgroundTitle','backgroundText']:['pause','pauseText'];
@@ -41,12 +41,12 @@ function pauseCopy(){
 }
 function pause(reason){
   if(!started||game.finished)return;
-  game.pause(reason);resetInput();pauseCopy();$('pause-overlay').hidden=false;$('resume').hidden=['lost-hand','camera-error'].includes(reason);$('pose-guide').hidden=reason!=='lost-hand';
+  game.pause(reason);resetInput();pauseCopy();arena.classList.toggle('tracking-lost',reason==='lost-hand');$('pause-overlay').hidden=false;$('resume').hidden=['lost-hand','camera-error'].includes(reason);$('pose-guide').hidden=true;
 }
 function resume(){
   if(!started||game.finished)return;resetInput();
   if(input==='camera'){lastResult=lastGun=performance.now();pause('lost-hand');}
-  else{game.resume();$('pause-overlay').hidden=true;}
+  else{game.resume();arena.classList.remove('tracking-lost');$('pause-overlay').hidden=true;}
 }
 function showError(key){
   camera.stop();loading=false;setupGeneration++;$('loading').hidden=true;
@@ -72,7 +72,7 @@ function onHands(result){
   if(update.valid)lastGun=now;
   for(const side of sides){const slot=tracking.slots[side],h=hands[side];h.visible=slot.visible;h.pose=slot.pose;h.charge=slot.trigger.charge;}
   if(game.pauseReason==='lost-hand'){
-    if(update.valid){resumeSince ??= now;if(now-resumeSince>=240){game.resume();resetInput();$('pause-overlay').hidden=true;feedback('go',1);}}
+    if(update.valid){resumeSince ??= now;if(now-resumeSince>=240){game.resume();resetInput();arena.classList.remove('tracking-lost');$('pause-overlay').hidden=true;feedback('go',1);}}
     else resumeSince=null;
   }else if(!game.pauseReason)for(const shot of update.shots)shoot(shot.hand,shot.charge);
 }

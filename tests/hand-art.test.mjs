@@ -7,14 +7,15 @@ test('both mirrored fingertips and bullet origins point at the aim across screen
     for(const aim of [{x:0,y:0},{x:1,y:0},{x:.5,y:.5},{x:0,y:1},{x:1,y:1}]){
       for(const recoil of [0,1]){
         const p=gunPlacement(side,aim,w,h,recoil);
-        const dx=Math.sin(p.angle),dy=-Math.cos(p.angle);
-        const tip={x:p.x+dx*-VIEW_FINGERTIP.y*p.scale,y:p.y+dy*-VIEW_FINGERTIP.y*p.scale};
+        const sign=side==='left'?1:-1,c=Math.cos(p.angle),s=Math.sin(p.angle);
+        const tip={x:p.x+(c*VIEW_FINGERTIP.x*sign-s*VIEW_FINGERTIP.y)*p.scale,y:p.y+(s*VIEW_FINGERTIP.x*sign+c*VIEW_FINGERTIP.y)*p.scale};
+        const dx=Math.cos(p.bearing),dy=Math.sin(p.bearing);
         assert.ok(Math.abs(tip.x-p.muzzle.x*w)<1e-8);
         assert.ok(Math.abs(tip.y-p.muzzle.y*h)<1e-8);
         const tx=aim.x*w-tip.x,ty=aim.y*h-tip.y;
-        assert.ok(Math.abs(tx*dy-ty*dx)<1e-8,'finger axis must pass through aim');
+        if(recoil===0)assert.ok(Math.abs(tx*dy-ty*dx)<1e-8,'resting index axis must pass through aim');
         assert.ok(tx*dx+ty*dy>0,'fingertip must point towards, not away from, aim');
-        assert.ok(dy<0,'hands stay below the target, including bottom corners');
+        assert.ok(dy<0,'hands point upward, including recoil');
       }
     }
   }

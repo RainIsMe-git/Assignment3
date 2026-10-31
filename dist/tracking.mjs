@@ -15,10 +15,11 @@ export class HandTracking {
       const slot=this.slots[side],o=assigned[side];
       if(o){slot.anchor=o.anchor;slot.lastSeen=now;}
       if(o?.pose.gun)slot.lastStrict=now;
-      // Hysteresis keeps slightly bent fingers valid briefly after a clear gun.
-      // A new hand still requires the strict pose, and an open palm is rejected.
+      // Briefly tolerate an obscured/bent index. Other fingers never gate fire.
       if(o && (o.pose.gun || (o.pose.relaxedGun && now-slot.lastStrict<=TRACKING_GRACE_MS))){
-        slot.pose={...o.pose,gun:true};slot.lastValid=now;valid++;
+        const previous=slot.pose;
+        const lift=previous&&previous.source===o.pose.source&&now-slot.lastValid<220?previous.lift*.2+o.pose.lift*.8:o.pose.lift;
+        slot.pose={...o.pose,lift,gun:true};slot.lastValid=now;valid++;
         const shot=slot.trigger.sample(slot.pose,now);if(shot)shots.push({hand:side,...shot});
       }else slot.trigger.miss(now);
     }

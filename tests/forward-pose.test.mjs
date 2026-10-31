@@ -37,13 +37,13 @@ test('camera-facing fingers with zero projected index length use world or depth 
   }
 });
 
-test('front-facing open palm, fist, folded thumb and horns remain invalid',()=>{
+test('front-facing input ignores other fingers but a closed index still cannot arm',()=>{
   for(const shape of ['palm','fist','thumb','horns']){
     const o=forward(),p=o.worldLandmarks;
     if(shape==='palm'||shape==='horns')for(const i of shape==='palm'?[9,13,17]:[17])for(let j=1;j<=3;j++)p[i+j]={x:p[i].x,y:p[i].y,z:-j*.025};
     if(shape==='fist')for(let j=1;j<=3;j++)p[5+j]={...p[13+j],x:p[5].x};
     if(shape==='thumb'){p[3]={x:-.02,y:.02,z:-.01};p[4]={x:.004,y:.025,z:-.014};}
-    assert.equal(readGunPose(o.landmarks,p,o.aspectRatio).gun,false,shape);
+    assert.equal(readGunPose(o.landmarks,p,o.aspectRatio).gun,shape!=='fist',shape);
   }
 });
 
