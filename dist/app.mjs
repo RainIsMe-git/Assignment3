@@ -3,7 +3,7 @@ import {HandTracking} from './tracking.mjs';
 import {GardenRenderer} from './renderer.mjs';
 import {HandCamera} from './camera.mjs';
 import {GameAudio} from './audio.mjs';
-import {MAX_ENERGY} from './palm-control.mjs';
+import {MAX_ENERGY,cameraStatusKey} from './palm-control.mjs';
 import {Tutorial,LESSONS} from './tutorial.mjs';
 import {BURST_EVERY,BURST_SECONDS} from './core.mjs';
 import {language,setLanguage,resolveLanguage,t,applyTranslations,messages} from './i18n.mjs';
@@ -36,7 +36,7 @@ function start(mode){
 function home(){
   audio.setActive(false);
   setupGeneration++;camera.stop();input='none';started=false;loading=false;tutorial.active=false;resetInput();game.reset();renderer.clear();arena.classList.remove('training');
-  for(const id of ['game-hud','bottom-hud','palm-hud','boss-hud','burst-hud','tutorial-hud','camera-panel','pause-overlay','result-overlay','error-box','loading'])$(id).hidden=true;
+  for(const id of ['game-hud','bottom-hud','palm-hud','boss-hud','queen-alert','burst-hud','tutorial-hud','camera-panel','pause-overlay','result-overlay','error-box','loading'])$(id).hidden=true;
   $('intro').hidden=false;$('poster-stamp').hidden=false;$('feedback').textContent='';feedbackKey='';arena.classList.remove('playing','tracking-lost');
 }
 function pauseCopy(){
@@ -159,9 +159,12 @@ function updateHud(now){
   $('palm-energy').style.setProperty('--energy',energy*100+'%');$('palm-energy').setAttribute('aria-valuenow',String(Math.round(energy*100)));$('palm-energy').setAttribute('aria-label',t('energyLabel',{seconds:game.palm.energy.toFixed(1)}));
   $('palm-time').textContent=game.palm.energy.toFixed(1)+'s';$('palm-hud').dataset.state=game.palm.active===2?'push':game.palm.active===1?'slow':energy===0?'empty':'ready';
   $('palm-state').textContent=t(game.palm.active===2?'pushing':game.palm.active===1?'slowing':energy===0?'energyEmpty':'palmReady');
+  if(tutorial.unlimitedEnergy){$('palm-time').textContent='∞';$('palm-energy').setAttribute('aria-label',t('trainingEnergy'));if(!game.palm.active)$('palm-state').textContent=t('trainingEnergy');}
   for(const side of sides)$('stop-'+side).setAttribute('aria-pressed',String(!!hands[side].stopping));
   const boss=game.plants.find(p=>p.boss);$('boss-hud').hidden=!boss||!started;
-  if(boss){$('boss-health').style.setProperty('--boss-hp',100*boss.hp/boss.maxHp+'%');$('boss-health').setAttribute('aria-valuenow',String(boss.hp));$('boss-health').setAttribute('aria-valuemax',String(boss.maxHp));$('boss-health').setAttribute('aria-label',t('bossHealth',{hp:boss.hp,max:boss.maxHp}));$('boss-name').textContent=t(boss.hp<=boss.maxHp/2?'bossRage':'bossName');}
+  if(boss){$('boss-health').style.setProperty('--boss-hp',100*boss.hp/boss.maxHp+'%');$('boss-health').setAttribute('aria-valuenow',String(boss.hp));$('boss-health').setAttribute('aria-valuemax',String(boss.maxHp));$('boss-health').setAttribute('aria-label',t('bossHealth',{hp:boss.hp,max:boss.maxHp}));$('boss-name').textContent=t(boss.finalBoss?'queenName':boss.hp<=boss.maxHp/2?'bossRage':'bossName')+(boss.finalBoss?' · ⛨ '+Object.values(boss.duel.wards).filter(Boolean).length:'');}
+  const queen=boss?.finalBoss?boss:null;$('queen-alert').hidden=!queen||!started;arena.classList.toggle('queen-battle',!!queen&&started);
+  if(queen){const q=queen.duel,threat=['windup','attack'].includes(q.phase);$('queen-alert').dataset.kind=threat?q.kind:q.phase;$('queen-action').textContent=t(threat?(q.kind==='freeze'?'queenFreeze':'queenPush'):q.phase==='exposed'?'queenExposed':'queenRest');$('queen-second-palm').hidden=!threat||q.kind!=='push';$('queen-counter').style.width=(threat?Math.min(1,q.counter/(q.kind==='freeze'?.6:.75)):q.phase==='exposed'?q.remaining/3.5:0)*100+'%';}
   let valid=0,visible=0;
   for(const side of sides){
     const h=hands[side],slot=tracking.slots[side];visible+=h.visible?1:0;valid+=now-slot.lastValid<200?1:0;
@@ -171,7 +174,8 @@ function updateHud(now){
     const meter=$(side+'-charge'),amount=Math.round(h.charge*100),damage=chargeDamage(h.charge);
     meter.style.setProperty('--charge',amount+'%');meter.setAttribute('aria-valuenow',String(amount));meter.setAttribute('aria-label',t('chargeLabel',{side:t(side==='left'?'leftGun':'rightGun'),damage}));meter.classList.toggle('full',h.charge>=1);$(side+'-power').textContent='×'+damage;
   }
-  $('camera-status').textContent=t(valid===2?'cameraDual':valid===1?'cameraSingle':visible?'cameraRecover':'cameraMissing');
+  const palms=sides.filter(side=>hands[side].visible&&hands[side].stopping).length;
+  $('camera-status').textContent=t(cameraStatusKey({valid,visible,palms,active:game.palm.active,energy:game.palm.energy}));
 }
 let previous=performance.now();
 function frame(now){
@@ -185,10 +189,13 @@ function frame(now){
     if(!game.pauseReason){
       if(input==='mouse')for(const side of sides)hands[side].stopping=mousePalms[side];
       game.palm.setHands(Object.fromEntries(sides.map(side=>[side,hands[side].visible&&hands[side].stopping])));
+      tutorial.prepare(game);
       for(const event of game.tick(dt)){
         if(event.type==='damage'){renderer.hurt=1;feedback('ouch',.7);audio.hurt();}
         if(event.type==='wave-start'){feedback('waveIncoming',2.2,{wave:event.wave,count:event.count});audio.wave();}
         if(event.type==='wave-clear')feedback('waveCleared',2.4,{wave:event.wave});
+        if(event.type==='queen-warning')audio.wave();
+        if(event.type==='queen-counter'){feedback(event.kind==='push'?'queenReflected':'queenStopped',1.5);audio.wave();}
         if(event.type==='finish')finish();
       }
       if(tutorial.active){

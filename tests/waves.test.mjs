@@ -24,14 +24,16 @@ test('waves contain exact growing groups, a frozen pause and a real intermission
  const g=new GardenGame(()=>.5);g.reset('survival');
  assert.equal(g.plants.length,6);assert.equal(g.wave,1);
  const seen=[];
- for(let wave=1;wave<=5;wave++){
-  let defeated=0;
+ for(let wave=1;wave<=WAVE_COUNTS.length;wave++){
+  const beforeKills=g.kills;
   for(let frame=0;frame<1000&&!g.finished&&g.wave===wave&&g.waveState==='active';frame++){
-   for(const side of ['left','right']){const shot=g.shoot(side,1);if(shot){defeated+=Number(shot.killed)+shot.splash.filter(p=>p.killed).length;}}
+   const queen=g.plants.find(p=>p.finalBoss),q=queen?.duel;
+   g.palm.setHands(q&&['windup','attack'].includes(q.phase)?{left:true,right:q.kind==='push'}:{});
+   for(const side of ['left','right'])g.shoot(side,1);
    g.tick(.1);
   }
-  seen.push(defeated);
-  if(wave<5){
+  seen.push(g.kills-beforeKills);
+  if(wave<WAVE_COUNTS.length){
    assert.equal(g.waveState,'break');assert.equal(g.plants.length,0);
    const remaining=g.breakRemaining;g.pause('manual');g.tick(.1);assert.equal(g.breakRemaining,remaining);g.resume();
    for(let n=0;n<20;n++)g.tick(.1);assert.equal(g.wave,wave,'no next wave before rest ends');

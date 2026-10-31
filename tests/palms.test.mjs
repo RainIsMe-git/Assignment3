@@ -44,12 +44,12 @@ test('one palm slows plants while the other fires; two push back and pause freez
  const energy=g.palm.energy;g.pause('manual');g.tick(.1);assert.equal(g.palm.energy,energy);
  g.reset();assert.equal(g.palm.energy,10);assert.equal(g.palm.active,0);
 });
-test('final wave includes one large boss; it survives reaching the player and must be defeated',()=>{
+test('wave five retains the small boss; it survives contact and defeating it continues the campaign',()=>{
  const g=new GardenGame(()=>.5);g.reset('survival');g.plants=[];g.wave=4;g.beginWave();
  const boss=g.plants.find(p=>p.boss);assert.ok(boss);assert.equal(boss.maxHp,20);assert.equal(g.plants.length+g.toSpawn,WAVE_COUNTS[4]);
  g.plants=[boss];g.toSpawn=0;boss.depth=.9999;g.tick(.1);assert.equal(g.hp,3);assert.equal(boss.hp,20);assert.equal(boss.depth,.62);assert.equal(g.finished,false);
  const hp=boss.hp;g.shoot('right',1);assert.equal(boss.hp,hp-3);
- boss.hp=1;g.shoot('left');g.tick(.1);assert.equal(g.won,true);assert.ok(g.score>=1500);
+ boss.hp=1;g.shoot('left');g.tick(.1);assert.equal(g.won,false);assert.equal(g.waveState,'break');assert.ok(g.score>=1500);
 });
 test('preview colors and readable letters use the same assigned identity even if raw labels flip',()=>{
  const t=new HandTracking();const a=palm(.2),b=palm(-.2);t.update([a,b],0);
