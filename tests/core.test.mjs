@@ -45,9 +45,9 @@ test('translating the whole hand changes aim but not trigger lift',()=>{
   assert.ok(Math.abs(a.lift-b.lift)<1e-9);assert.notEqual(a.aim.x,b.aim.x);assert.notEqual(a.aim.y,b.aim.y);
 });
 test('both requested gun shapes are accepted: thumb/index and thumb/index/middle',()=>{
-  const p=landmarks();assert.equal(readGunPose(p).variant,'two');assert.equal(readGunPose(p).gun,true);
+  const p=landmarks();assert.equal(readGunPose(p).gun,true);
   p[10]={x:.49,y:.48};p[11]={x:.48,y:.44};p[12]={x:.47,y:.40};
-  assert.equal(readGunPose(p).gun,true);assert.equal(readGunPose(p).variant,'three');
+  assert.equal(readGunPose(p).gun,true);
 });
 test('thumb and unused fingers never reject an otherwise trackable index',()=>{
   const folded=landmarks();folded[3]={x:.44,y:.60};folded[4]={x:.48,y:.62};assert.equal(readGunPose(folded).gun,true);
@@ -56,7 +56,7 @@ test('thumb and unused fingers never reject an otherwise trackable index',()=>{
 test('changing middle-finger pose does not interrupt charge or the index flick',()=>{
   const t=new GunTrigger();arm(t);
   assert.equal(t.sample({...pose(),variant:'three'},240),null);
-  assert.equal(t.ready,true);assert.equal(t.variant,'three');
+  assert.equal(t.ready,true);
   assert.ok(t.sample({...pose(.2),variant:'two'},320));
 });
 test('gun shape classification is stable under mirror, rotation and distance scaling',()=>{
@@ -131,4 +131,14 @@ test('a smaller upward lift fires and a partial return rearms without repeating 
  for(let n=320;n<=640;n+=80)assert.equal(t.sample(pose(.20),n),null);
  t.sample(pose(.04),720);t.sample(pose(.04),800);t.sample(pose(.04),880);
  assert.ok(t.sample(pose(.22),960));
+});
+
+test('middle-finger tip motion cannot change pose, pitch or the rendered hand selection',()=>{
+ const p=landmarks(),baseline=readGunPose(p);
+ for(const y of [.2,.4,.6,.8]){const q=structuredClone(p);for(const i of [10,11,12])q[i]={x:.55,y,z:-.08};assert.deepEqual(readGunPose(q),baseline);}
+ assert.equal('variant' in baseline,false);
+});
+test('shot carries an immutable pre-hit cel for projectile arrival and death effects',()=>{
+ const g=new GardenGame();const before={...g.plants[0]},event=g.shoot('left',1);
+ assert.deepEqual(event.plant,before);assert.notEqual(event.plant,g.plants[0]);assert.equal(event.killed,true);assert.equal(event.damage,3);
 });

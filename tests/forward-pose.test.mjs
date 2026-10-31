@@ -26,7 +26,7 @@ test('foreshortened forward guns recognize in both hands, shapes and camera aspe
     const o=forward({three,mirror,aspect,yaw});
     const p=readGunPose(o.landmarks,o.worldLandmarks,aspect);
     assert.equal(p.gun,true,JSON.stringify({three,mirror,aspect,yaw}));
-    assert.equal(p.variant,three?'three':'two');
+    assert.equal('variant' in p,false);
   }
 });
 

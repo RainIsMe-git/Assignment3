@@ -23,33 +23,33 @@ export function handPaths(variant='two',cuff='#4c8a87'){
   ];
 }
 
-// Three-quarter finger-gun silhouette: upright thumb, rounded pointing index,
-// and three overlapping curled fingers. Warm ivory gloves keep the cel style.
-export const VIEW_FINGERTIP={x:92,y:-64};
-export const VIEW_FINGER_BASE={x:17,y:-18};
-export function perspectiveHandPaths(variant='two',cuff='#4c8a87'){
+// Original cel drawing based on the user's PSYCHOFINGER silhouette reference.
+// One stable glove pose: the middle finger never changes the artwork.
+export const VIEW_FINGERTIP={x:106,y:-79};
+export const VIEW_FINGER_BASE={x:46,y:-27};
+export function perspectiveHandPaths(cuff='#4c8a87'){
   return [
-    ['M-42 64 L-78 139 L33 155 L36 69Z','#343039',4],
-    ['M-44 54 Q-7 73 36 62 L40 85 Q-5 96 -54 75Z',cuff,4],
-    // Continuous thumb/palm/index contour, with a generous negative-space web.
-    ['M-43 57 C-46 37 -43 16 -39 -2 C-35 -20 -32 -37 -32 -57 C-33 -76 -28 -95 -18 -101 C-9 -108 2 -101 5 -91 C10 -73 3 -53 -2 -37 C-5 -27 -4 -21 4 -20 C24 -29 48 -43 68 -57 C78 -65 88 -69 92 -64 C100 -56 93 -44 82 -36 L39 -6 C48 9 50 30 43 45 C33 66 13 78 -8 74 C-23 70 -35 65 -43 57Z','#fff3dc',4.5],
-    ['M-42 45 Q-15 66 5 65 Q28 62 39 45 L43 45 Q33 68 10 75 Q-12 81 -43 57Z','#d3bfa7',0],
-    // The pointing finger has one rounded tip and one understated knuckle crease.
-    ['M21 -15 Q32 -12 37 -5',null,2.6],
-    ['M56 -39 Q69 -47 79 -54',null,2,'#fffdf0'],
-    ['M-22 -88 Q-18 -96 -13 -92',null,2.5,'#fffdf0'],
-    // Curled fingers overlap the palm from top to bottom, not extra knuckles
-    // floating on the back of the index.
-    ...(variant==='three'?[
-      ['M17 6 Q39 -3 60 -14 C72 -21 81 -20 81 -11 C80 -3 62 7 46 14 L22 23Z','#fff3dc',3.5],
-    ]:[
-      ['M16 3 C33 -1 51 4 53 15 C54 27 42 32 27 28 L10 23 Q5 14 16 3Z','#fff3dc',3.5],
-      ['M21 8 Q32 6 39 11',null,1.8,'#bc9e87'],
-    ]),
-    ['M10 26 Q30 32 44 29 C53 30 51 42 42 47 C28 52 14 44 6 40 Q2 32 10 26Z','#fff3dc',3.3],
-    ['M7 43 Q24 52 38 47 C46 50 40 61 32 63 Q17 66 3 54Z','#fff3dc',3.1],
-    ['M-20 -20 Q-8 -9 3 -9 M-25 38 Q-15 46 -6 46',null,2.3],
-    ['M-30 28 l11 7 M-28 18 l13 7 M-25 9 l13 7',null,2.2],
+    // Match the lower left hand in the supplied reference: broad wrist,
+    // thumb sweeping into the palm, and an index projecting above the fist.
+    ['M-107 39 L-168 125 L-30 185 L43 104Z','#343039',4.6],
+    ['M-103 37 L-119 57 L26 131 L42 107Z',cuff,4.2],
+    ['M-91 21 C-79 -5 -62 -30 -50 -46 C-37 -67 -27 -82 -26 -105 C-27 -120 -18 -130 -6 -128 C12 -127 22 -108 21 -87 C21 -67 11 -49 8 -40 C32 -49 59 -65 82 -81 C95 -92 106 -93 111 -82 C117 -69 102 -53 88 -43 C73 -32 59 -25 48 -20 L47 -1 C67 -7 87 -7 91 7 C98 21 91 36 87 43 C89 59 80 75 65 77 C50 93 38 98 27 99 C-3 82 -46 49 -91 21Z','#fff1d9',4.8],
+    // Warm cloth shadow only along the underside; keep the palm one shape.
+    ['M-87 20 Q-23 64 30 85 Q58 85 73 70 Q61 91 27 99 Q-13 73 -91 21Z','#d8c8b1',0],
+    ['M9 -110 Q23 -88 10 -57 L2 -41 Q0 -35 8 -31 L16 -38 Q8 -23 -1 -30 Q-9 -37 1 -61 Q11 -87 9 -110Z','#dfd0b8',0],
+    ['M48 -24 Q77 -40 94 -56 Q110 -69 111 -78 Q117 -64 88 -43 L48 -20Z','#dbc8ac',0],
+    // Thumb and index glove highlights, without painted fingernails.
+    ['M-18 -104 Q-20 -120 -7 -121 M87 -77 Q99 -86 104 -79',null,3,'#fffdf0'],
+    ['M8 -40 Q14 -18 17 7 Q20 28 15 48 M47 -29 L46 -2',null,3.6],
+    // Three folded fingers are connected hooked bands, not separate ovals.
+    ['M21 8 C39 2 58 7 77 -3 C87 -8 94 -1 94 11 C95 25 86 31 71 34 C50 39 28 33 21 26Z','#fff1d9',4],
+    ['M22 30 Q49 42 76 32 Q89 26 86 43 C84 57 70 62 54 61 Q32 59 20 49Z','#fff1d9',3.9],
+    ['M20 51 Q43 64 69 59 Q81 56 75 70 C68 84 46 88 30 77 Q17 69 20 51Z','#fff1d9',3.7],
+    ['M28 27 Q49 34 70 28 M27 50 Q49 58 67 51 M29 71 Q47 80 62 72',null,2,'#cbbb9f'],
+    // Back-of-glove seams follow the diagonal wrist instead of a flat icon.
+    ['M-47 9 l17 12 M-53 19 l16 12 M-58 29 l15 11',null,2.6],
+    ['M-94 20 Q-31 67 31 99 L39 111 Q-27 84 -105 38Z','#fff1d9',4.2],
+    ['M-93 35 Q-26 80 25 103',null,1.8,'#bdab92'],
   ];
 }
 

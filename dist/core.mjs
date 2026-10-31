@@ -17,11 +17,10 @@ export function readGunPose(points, worldPoints, aspectRatio=1) {
   const indexReach=reach(5,8), indexStraight=chain(5,6,7,8);
   const gun=indexReach>.28 && indexStraight>.50;
   const relaxedGun=indexReach>.23 && indexStraight>.40;
-  const middle=chain(9,10,11,12)>.75 && reach(9,12)>.43;
   const towardCamera=(metric[5].z-metric[8].z)/palmSize;
   const spatial=valid3D||towardCamera>.35;
   const imageScale=Math.max(distance(points[0],points[9]),.025);
-  return {gun,relaxedGun,variant:middle?'three':'two',source:valid3D?'world':spatial?'depth':'image',
+  return {gun,relaxedGun,source:valid3D?'world':spatial?'depth':'image',
     lift:spatial?(metric[5].y-metric[8].y)/Math.max(distance(metric[5],metric[8]),palmSize*.3)*1.25:(points[5].y-points[8].y)/imageScale,
     aim:{x:clamp(1-points[0].x,.06,.94),y:clamp(points[0].y,.22,.78)}};
 }
@@ -32,7 +31,7 @@ export const CHARGE_MS=2000, TRACKING_GRACE_MS=750;
 export const chargeDamage=charge=>1+Math.floor(clamp(charge)*2+.000001);
 export class GunTrigger {
   constructor(){this.reset();}
-  reset(){this.base=null;this.since=0;this.last=null;this.ready=false;this.latched=false;this.peak=0;this.cooldownUntil=0;this.variant=null;this.source=null;this.chargeMs=0;this.interrupted=false;}
+  reset(){this.base=null;this.since=0;this.last=null;this.ready=false;this.latched=false;this.peak=0;this.cooldownUntil=0;this.source=null;this.chargeMs=0;this.interrupted=false;}
   get charge(){return clamp(this.chargeMs/CHARGE_MS);}
   miss(time){
     this.interrupted=true;
@@ -42,10 +41,9 @@ export class GunTrigger {
     if(!pose?.gun){this.miss(time);return null;}
     const gap=this.last===null?0:time-this.last;
     if(gap>TRACKING_GRACE_MS)this.reset();
-    const variant=pose.variant||'two';
     const source=pose.source||'image';
     const reacquired=this.interrupted||gap>220||(this.source&&this.source!==source);
-    this.interrupted=false;this.variant=variant;this.source=source;this.last=time;
+    this.interrupted=false;this.source=source;this.last=time;
     if(this.base===null){this.base=pose.lift;this.since=time;return null;}
     // Never infer a flick from motion that happened during an occlusion.
     if(reacquired){if(!this.latched)this.base=pose.lift;this.ready=false;this.since=time;return null;}
@@ -98,14 +96,14 @@ export class GardenGame {
     const target=automaticTargets(this.plants,activeSides)[hand]||automaticTargets(this.plants,[hand])[hand];
     // No enemy means no spent shot/charge and no false miss in the statistics.
     if(!target)return null;
-    const point=projectPlant(target),damage=chargeDamage(charge);
+    const point=projectPlant(target),damage=chargeDamage(charge),plant={...target};
     this.shots++;
     target.hp-=damage;target.flash=.22;target.depth=Math.max(.02,target.depth-.10-damage*.035);
     this.hits++;this.combo++;this.bestCombo=Math.max(this.bestCombo,this.combo);
     const killed=target.hp<=0,points=killed?100+Math.min(this.combo,10)*10:30;
     this.score+=points;if(killed)this.kills++;
     this.plants=this.plants.filter(p=>p.hp>0);
-    return {hand,aim:{x:point.x,y:point.y},targetId:target.id,charge:clamp(charge),damage,hit:true,killed,points,type:target.type};
+    return {hand,plant,aim:{x:point.x,y:point.y},targetId:target.id,charge:clamp(charge),damage,hit:true,killed,points,type:target.type};
   }
   tick(dt){
     if(this.finished||this.pauseReason)return [];

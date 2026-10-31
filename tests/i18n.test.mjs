@@ -12,8 +12,8 @@ test('both locales cover the same UI and camera keys, and interpolate charge tex
   for(const match of html.matchAll(/data-i18n(?:-aria-label|-alt|-title)?="([^"]+)"/g))assert.ok(messages.en[match[1]],match[1]);
   for(const lang of ['en','zh']){setLanguage(lang);assert.ok(t('chargeLabel',{side:'L',damage:3}).includes('3'));assert.ok(t('comboFeedback',{count:5}).includes('5'));}
 });
-test('teaching UI omits the alternate gesture while runtime artwork still supports it',async()=>{
+test('teaching UI has one gun pose and live rendering never selects a middle-finger variant',async()=>{
   const html=await readFile(new URL('../dist/index.html',import.meta.url),'utf8');
   assert.equal(html.includes('gun-three.svg'),false);
-  const {handPaths}=await import('../dist/hand-art.mjs');assert.notDeepEqual(handPaths('three'),handPaths('two'));
+  const renderer=await readFile(new URL('../dist/renderer.mjs',import.meta.url),'utf8');assert.equal(renderer.includes('pose?.variant'),false);
 });

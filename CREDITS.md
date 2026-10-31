@@ -8,9 +8,12 @@
 - **实现参考：** [Google Web Gesture Recognizer 文档](https://ai.google.dev/edge/mediapipe/solutions/vision/gesture_recognizer/web_js) 用于双手配置、handedness、21 个关键点及 worker 推理。指枪抬指检测和游戏规则为项目代码。
 - **模型分发：** jsDelivr 与 Google Cloud Storage。视频帧不发送给这些服务。
 - **三维识别参考：** [MediaPipe 手部关键点说明](https://developers.google.com/edge/mediapipe/solutions/vision/hand_landmarker/web_js)，用于区分图像归一化坐标和以米为单位的世界坐标、修正宽高比并处理指尖朝镜头的透视缩短。
-- **字体与声音：** 本机系统字体，无远程字体。音效由 Web Audio 合成，无外部录音。
+- **字体：** 本机系统字体，无远程字体。
+- **背景音乐：** 用户提供的 `ES_Well I Just Don't Care - Stationary Sign.wav`（Stationary Sign / Epidemic Sound），转换为 `garden-jazz.mp3`，保留完整曲目并处理两端淡入淡出。
+- **射击录音：** 用户提供的 Epidemic Sound 文件：`ES_Lasers, Gun, Fire, Shoot, Discharge, Singular`、`ES_Lasers, Gun, Plasma Blaster, Shoot, Fire, Single Rounds, Dull`、`ES_Lasers, Gun, Fire, Shoot, Powerful, Exhaust, Steam, Scifi, Variations`（原文件均为 `.wav`，后缀为 ` - Epidemic Sound`）。分别截取为轻、中、重枪声；蓄力循环从 Powerful 录音中截取、倒放并滤波，随蓄力改变音高与音量。来源署名不代表授予这些第三方录音新的许可。
+- **音频加工：** FFmpeg / libmp3lame；加工脚本在 `scripts/prepare-audio.py`。浏览器使用 Web Audio 播放，并合成满蓄力双音提示和短促受击声。
 - **测试：** Node.js 内置测试运行器；Codex 浏览器工具用于页面验证。无需作为游戏运行依赖安装。
 - **课程样例：** 未提供或复制课程示例代码。
-- **手势造型参考：** 用户提供的 PSYCHOFINGER 截图及 [B 站视频页面](https://www.bilibili.com/video/BV1vtpY6kETr/)。参考竖拇指、前伸食指及卷曲手指的轮廓关系，重新绘制复古白手套；未使用原作图片或动画资源。视频页面在工具中加载超时，动画为自行实现。
+- **手势造型参考：** 用户提供的 PSYCHOFINGER 截图及 [B 站视频页面](https://www.bilibili.com/video/BV1vtpY6kETr/)。最终手部按截图下方双手的轮廓比例重绘：宽掌、厚拇指、斜向食指和连续卷指，改为奶油白手套与复古袖口。此造型基于该参考，不声称是完全独立设计；未将原截图或动画文件打包为贴图。视频页面在工具中加载超时，后坐与回落动画为项目实现。
 
 - **本轮直接参考：** [Studio MDHR 官方媒体截图](https://studiomdhr.com/press-kits/)（Cagney Carnation）与 [Caitlin Russell：Cuphead Backgrounds](https://caitrussell.com/ch-bgs.html)。仅用于分析背景与角色层次，未作为游戏运行资源。被拒绝的 imagegen 草稿未用于最终背景。

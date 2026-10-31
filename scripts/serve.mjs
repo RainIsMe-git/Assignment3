@@ -6,7 +6,7 @@ import { createHash } from 'node:crypto';
 
 const root = fileURLToPath(new URL('../dist/', import.meta.url));
 export const instance = createHash('sha256').update(resolve(root).toLowerCase()).digest('hex').slice(0, 16);
-const types = { '.html': 'text/html; charset=utf-8', '.css': 'text/css; charset=utf-8', '.mjs': 'text/javascript; charset=utf-8', '.svg': 'image/svg+xml', '.png': 'image/png' };
+const types = { '.html': 'text/html; charset=utf-8', '.css': 'text/css; charset=utf-8', '.mjs': 'text/javascript; charset=utf-8', '.svg': 'image/svg+xml', '.png': 'image/png', '.mp3':'audio/mpeg', '.wav':'audio/wav' };
 export function createGameServer() {
 return http.createServer(async (req, res) => {
   try {

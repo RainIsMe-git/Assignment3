@@ -1,7 +1,7 @@
 export const messages={
   zh:{
     pageTitle:'指尖双枪 · Garden Gunners',brand:'指尖双枪',subtitle:'GARDEN GUNNERS',titleOne:'花园失控，',titleTwo:'指尖开火！',
-    soundOn:'开启音效',soundOff:'关闭音效',sound:'音效',filmOn:'开启旧胶片效果',filmOff:'关闭旧胶片效果',film:'旧胶片效果',help:'操作指南',language:'Switch to English',
+    soundOn:'开启音乐与音效',soundOff:'关闭音乐与音效',sound:'音乐与音效',filmOn:'开启旧胶片效果',filmOff:'关闭旧胶片效果',film:'旧胶片效果',help:'操作指南',language:'Switch to English',
     arena:'第一人称指枪射击花园',scene:'自动锁定植物的双手指枪',lesson:'保持指枪蓄力，向上抬指开火',poseAlt:'食指和拇指伸出，其余手指收起',flickAlt:'向上抬指开火',lessonLabel:'蓄力 · 抬指 · 开火',chargeHint:'自动瞄准 · 越晚抬指，威力越大',
     cameraStart:'手势开战',mouseStart:'鼠标试玩',privacy:'摄像头仅在本机处理',dual:'支持双手同时开火',leftGun:'左枪',rightGun:'右枪',health:'生命',practice:'练习',closeCamera:'关闭摄像头并返回首页',
     challenge:'▶ 保卫战',pause:'暂停',pauseHint:'暂停 · Esc',home:'返回首页',resume:'▶ 继续',pauseText:'准备好再继续。',
@@ -14,7 +14,7 @@ export const messages={
   },
   en:{
     pageTitle:'Garden Gunners',brand:'Garden Gunners',subtitle:'A FINGER-GUN FABLE',titleOne:'Garden gone wild.',titleTwo:'Fingers, fire!',
-    soundOn:'Enable sound',soundOff:'Mute sound',sound:'Sound',filmOn:'Enable film effects',filmOff:'Disable film effects',film:'Film effects',help:'How to play',language:'切换到中文',
+    soundOn:'Enable music and sound',soundOff:'Mute music and sound',sound:'Music and sound',filmOn:'Enable film effects',filmOff:'Disable film effects',film:'Film effects',help:'How to play',language:'切换到中文',
     arena:'First-person finger-gun garden',scene:'Dual finger guns automatically targeting plants',lesson:'Hold a finger gun to charge, then flick upward to fire',poseAlt:'Extend your index finger and thumb; curl the other fingers',flickAlt:'Flick upward to fire',lessonLabel:'HOLD · LIFT · FIRE',chargeHint:'Auto aim · Wait longer, hit harder',
     cameraStart:'Play with hands',mouseStart:'Try with mouse',privacy:'Camera processed on your device only',dual:'Fire both hands together',leftGun:'Left gun',rightGun:'Right gun',health:'Health',practice:'Practice',closeCamera:'Stop camera and return home',
     challenge:'▶ Defend',pause:'Paused',pauseHint:'Pause · Esc',home:'Home',resume:'▶ Resume',pauseText:'Continue when you are ready.',
