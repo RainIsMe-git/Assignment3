@@ -3,11 +3,13 @@ import {paintGarden} from './backdrop.mjs';
 import {perspectiveHandPaths,gunPlacement} from './hand-art.mjs';
 import {shotStyle} from './combat-feedback.mjs';
 import {HAND_COLORS} from './hand-identity.mjs';
+import {CLAP_CONTACT,CLAP_DURATION} from './clap.mjs';
+import {clapHandPaths} from './clap-art.mjs';
 import {stopHandPaths} from './palm-art.mjs';
 const INK='#29242b', CREAM='#fff2d9', GREEN='#4f8a3c';
 export class GardenRenderer {
   constructor(canvas){
-    this.canvas=canvas;this.c=canvas.getContext('2d');this.t=0;this.effects=[];this.recoil={left:0,right:0};this.hurt=0;
+    this.canvas=canvas;this.c=canvas.getContext('2d');this.t=0;this.effects=[];this.recoil={left:0,right:0};this.hurt=0;this.healthTrails=new Map();
     this.background=document.createElement('canvas');this.grain=document.createElement('canvas');
     this.film=true;this.reducedMotion=matchMedia('(prefers-reduced-motion: reduce)').matches;
     this.resize();this.observer=new ResizeObserver(()=>this.resize());this.observer.observe(canvas);
@@ -89,40 +91,40 @@ export class GardenRenderer {
     const c=this.c,scale=Math.min(this.w/850,this.h/530),x=this.w*(side==='left'?.24:.76),y=this.h*.83;
     c.save();c.translate(x,y);c.rotate(side==='left'?-.10:.10);c.scale(scale*(side==='left'?1:-1),scale);
     for(const [path,fill,width,stroke] of stopHandPaths(color))this.path(path,fill,width?stroke||INK:null,width);
-    if(powered){c.strokeStyle=powered===2?'#b38aca':'#77d1c6';c.lineWidth=3;for(let i=0;i<2;i++){c.beginPath();c.ellipse(0,-8,69+i*13,53+i*12,0,0,Math.PI*2);c.stroke();}}
+    if(powered){c.strokeStyle='#b38aca';c.lineWidth=3;for(let i=0;i<2;i++){c.beginPath();c.ellipse(0,-8,69+i*13,53+i*12,0,0,Math.PI*2);c.stroke();}}
     c.restore();
   }
   shot(event,hand){
     const idle=this.reducedMotion?0:Math.sin(this.t*2.2+(event.hand==='left'?0:1.6))*2;
     const gun=gunPlacement(event.hand,hand.aim,this.w,this.h,0,idle);
     const style=shotStyle(event.damage);this.recoil[event.hand]=.65+event.damage*.23;this.effects.push({...event,aim:{...event.aim},origin:gun.muzzle,bearing:gun.bearing,life:0,duration:style.duration});
-    for(const impact of event.splash||[])this.effects.push({...impact,hand:event.hand,splashOnly:true,explosive:true,origin:gun.muzzle,bearing:gun.bearing,life:0,duration:style.duration});
     if(event.hit){for(let i=0;i<style.particles;i++)this.effects.push({particle:true,x:event.aim.x,y:event.aim.y,vx:(Math.random()-.5)*(.14+event.damage*.07),vy:(Math.random()-.7)*(.18+event.damage*.06),life:-style.flight,duration:.35+event.damage*.12,size:2+event.damage,leaf:event.killed&&i%3===0,color:[style.color,style.light,'#6d934c'][i%3]});}
   }
-  clear(){this.effects=[];this.hurt=0;this.recoil={left:0,right:0};}
+  clear(){this.effects=[];this.healthTrails.clear();this.hurt=0;this.recoil={left:0,right:0};}
   queenAttack(plant,enemyTime){
     const q=plant.duel,c=this.c,w=this.w,h=this.h,p=projectPlant(plant),x=p.x*w,y=p.y*h;
+    if(q.phase==='waiting')return;
     if(q.phase==='rest'){this.ellipse(x,y,p.size*h*.63,p.size*h*.84,null,'#a6c9c680',3);return;}
     if(q.phase==='exposed'){this.ellipse(x,y,p.size*h*.7,p.size*h*.9,null,'#f6d471',4);return;}
-    const incoming=q.phase==='attack',f=incoming?q.flight:0,colour=q.kind==='push'?'#bf779d':'#74c7c0';
+    const incoming=['attack','reflect'].includes(q.phase),f=incoming?q.flight:.22,colour='#bf779d';
     c.save();c.globalAlpha=.8;c.strokeStyle=colour;c.lineWidth=3;
     for(const sign of [-1,1]){c.beginPath();c.moveTo(x+sign*w*.1,y);c.quadraticCurveTo(x+sign*w*.26,h*.65,x+sign*w*.3,h*.93);c.stroke();}
     c.restore();
     if(q.kind==='push'){
       const r=(25+f*95)*Math.min(w/1000,1.3),oy=y+(h*.85-y)*f;
-      c.save();c.translate(x,oy);c.rotate(this.reducedMotion?0:enemyTime*.35);this.ellipse(0,0,r,r,'#5d485f',INK,3);
+      c.save();c.translate(x,oy);c.rotate(this.reducedMotion?0:enemyTime*.35);this.ellipse(0,0,r,r,q.phase==='reflect'?'#9b67ac':'#5d485f',INK,3);
+      if(q.phase==='reflect'){this.path(`M0 ${r*1.9} L0 ${r*.6} M-10 ${r} L0 ${r*.6} L10 ${r}`,null,'#fff0b5',5);}
       for(let i=0;i<10;i++){c.rotate(Math.PI/5);this.path(`M${r*.8} -5 L${r*1.35} 0 L${r*.8} 8Z`,'#cf9fa1',INK,2);}
       this.ellipse(0,0,r*.65,r*.65,null,'#e1bf91',3);c.restore();
     }else{
       for(let i=0;i<7;i++){const spread=(i-3)*(.025+f*.065)*w,oy=y+f*h*.35+Math.sin(i*2)*12;this.ellipse(x+spread,oy,9+f*12,13+f*14,'#87bab0',INK,2);this.ellipse(x+spread-2,oy-3,3,4,'#fff3d4',null);}
     }
   }
-  update(dt,running){this.t+=dt;for(const k of ['left','right'])this.recoil[k]=Math.max(0,this.recoil[k]-dt*5);this.hurt=Math.max(0,this.hurt-dt*2);if(running)for(const fx of this.effects)fx.life+=dt;this.effects=this.effects.filter(e=>e.life<e.duration);}
+  update(dt,running){this.dt=running?dt:0;this.t+=dt;for(const k of ['left','right'])this.recoil[k]=Math.max(0,this.recoil[k]-dt*5);this.hurt=Math.max(0,this.hurt-dt*2);if(running)for(const fx of this.effects)fx.life+=dt;this.effects=this.effects.filter(e=>e.life<e.duration);}
   drawShot(fx,hands){
-    const c=this.c,w=this.w,h=this.h,style={...shotStyle(fx.damage),...(fx.explosive?{color:'#ef713a',light:'#fff3b2',impact:fx.splashOnly?26:54,rings:3,trail:9}:{})},origin={x:fx.origin.x*w,y:fx.origin.y*h},end={x:fx.aim.x*w,y:fx.aim.y*h};
-    if(fx.splashOnly&&fx.life<style.flight)return;
+    const c=this.c,w=this.w,h=this.h,style=shotStyle(fx.damage),origin={x:fx.origin.x*w,y:fx.origin.y*h},end={x:fx.aim.x*w,y:fx.aim.y*h};
     c.save();
-    if(!fx.splashOnly&&fx.life<.11){
+    if(fx.life<.11){
       const idle=this.reducedMotion?0:Math.sin(this.t*2.2+(fx.hand==='left'?0:1.6))*2;
       const gun=gunPlacement(fx.hand,hands[fx.hand].aim,w,h,this.reducedMotion?0:this.recoil[fx.hand],idle);
       c.save();c.translate(gun.muzzle.x*w,gun.muzzle.y*h);c.rotate(gun.bearing);c.scale(.7+fx.damage*.35,.7+fx.damage*.35);
@@ -148,10 +150,6 @@ export class GardenRenderer {
       const p=projectPlant(fx.plant),fade=1-impactTime/.2;c.save();c.globalAlpha=fade;c.translate(end.x,end.y);c.rotate((fx.hand==='left'?-1:1)*impactTime*2);this.plant(0,-impactTime*80,p.size*h*.65*(.8+fade*.2),fx.type,this.t,.12,fx.plant.seed);c.restore();
     }
     c.translate(end.x,end.y);c.globalAlpha=1-t;
-    if(fx.explosive&&!fx.splashOnly){
-      const reach=Math.min(1,impactTime/.16),rx=fx.radius*w*reach,ry=fx.radius*h/1.3*reach;
-      this.ellipse(0,0,rx,ry,'#ed74382a','#ef9b40',4);this.ellipse(0,0,rx*.88,ry*.88,null,'#ffe5a5',2);
-    }
     for(let i=0;i<style.rings;i++){
       const phase=clamp((impactTime-i*.055)/.35);if(impactTime<i*.055)continue;
       c.globalAlpha=(1-phase)*.8;c.strokeStyle=i%2?style.light:style.color;c.lineWidth=(1-phase)*(fx.damage===3?4:2)+1;
@@ -160,11 +158,26 @@ export class GardenRenderer {
     c.globalAlpha=1-t;const r=style.impact*(.75+t*.45);c.rotate(-.12);
     c.beginPath();for(let i=0;i<16;i++){const a=i*Math.PI/8,rr=i%2?r*.45:r;c.lineTo(Math.cos(a)*rr,Math.sin(a)*rr);}c.closePath();c.fillStyle=style.color;c.fill();c.strokeStyle=INK;c.lineWidth=2.2;c.stroke();
     c.fillStyle=style.light;c.beginPath();for(let i=0;i<12;i++){const a=i*Math.PI/6,rr=(i%2?.3:.57)*r;c.lineTo(Math.cos(a)*rr,Math.sin(a)*rr);}c.closePath();c.fill();
-    c.fillStyle=INK;c.textAlign='center';c.font='italic 900 '+(12+fx.damage*3)+'px Georgia';c.fillText(fx.blocked?'GUARD!':fx.explosive?'BOOM!':['PIP!','POW!','KABOOM!'][fx.damage-1],0,6);
-    const damageLabel=fx.blocked?'⛨':'−'+(fx.appliedDamage??fx.damage);
+    c.fillStyle=INK;c.textAlign='center';c.font='italic 900 '+(12+fx.damage*3)+'px Georgia';c.fillText(fx.blocked?'GUARD!':['PIP!','POW!','KABOOM!'][fx.damage-1],0,6);
+    const damageLabel=fx.blocked?'⛨':'−'+Number((fx.appliedDamage??fx.damage).toFixed(1));
     c.font='bold '+(14+fx.damage*3)+'px Georgia';c.fillStyle=style.light;c.strokeStyle=INK;c.lineWidth=3;c.strokeText(damageLabel,0,-r-10-t*25);c.fillText(damageLabel,0,-r-10-t*25);
     if(fx.killed){c.font='bold 12px Georgia';c.fillStyle=INK;c.fillText('+'+fx.points,0,r+20);}
     c.restore();
+  }
+  clapImpact(impacts){for(const impact of impacts)this.effects.push({pulse:true,aim:impact.aim,life:0,duration:.55});}
+  drawClap(time){
+    const c=this.c,w=this.w,h=this.h,u=clamp(time/CLAP_CONTACT),after=Math.max(0,time-CLAP_CONTACT);
+    const separation=time<CLAP_CONTACT?.22*(1-u*u)+.018:.018+Math.min(.12,after*.22),scale=Math.min(w/850,h/530)*.93;
+    for(const side of ['left','right']){
+      const sign=side==='left'?1:-1;c.save();c.translate(w*(.5-sign*separation),h*(.78+after*.10));c.rotate(sign*(.2+(time<CLAP_CONTACT?.16*(1-u):-.12*after)));c.scale(sign*scale*.64,scale);
+      for(const [path,fill,width,stroke] of clapHandPaths(HAND_COLORS[side]))this.path(path,fill,width?stroke||INK:null,width);c.restore();
+    }
+    if(time>=CLAP_CONTACT){
+      const progress=clamp(after/.6);c.save();c.globalAlpha=(1-progress)*.8;
+      this.ellipse(w*.5,h*.65,w*(.03+progress*.8),h*(.03+progress*.6),null,'#e9baff',6*(1-progress)+1);
+      if(after<.18){c.translate(w*.5,h*.65);for(let i=0;i<8;i++){c.rotate(Math.PI/4);this.path('M22 0 L48 0 M30 -6 L43 -8',null,'#fff0b2',4);}}
+      c.restore();
+    }
   }
   draw(game,hands,home){
     const c=this.c,w=this.w,h=this.h;c.clearRect(0,0,w,h);
@@ -177,7 +190,7 @@ export class GardenRenderer {
       this.plant(w*.91,h*(narrow?.91:.77),Math.min(h*.135,w*.08),2,this.t,0,5);
     }else{
       if(game.palm?.active){
-        const power=game.palm.active,c0=power===2?'#ae88c4':'#6fc4bd';c.save();c.strokeStyle=c0;c.lineWidth=power===2?5:3;
+        const power=game.palm.active,c0='#ae88c4';c.save();c.strokeStyle=c0;c.lineWidth=power===2?5:3;
         for(let i=0;i<4;i++){const phase=((this.reducedMotion?0:this.t*.65)+i/4)%1;c.globalAlpha=(1-phase)*.30;c.beginPath();c.ellipse(w*.5,h*(.85-phase*.43),w*(.14+phase*.43),h*(.04+phase*.03),0,0,Math.PI*2);c.stroke();}c.restore();
       }
       // Keep the pre-hit cel visible until the bullet arrives. Game rules stay
@@ -187,11 +200,17 @@ export class GardenRenderer {
       const plants=[...game.plants.filter(p=>!pending.has(p.id)),...pending.values()];
       for(const plant of plants.sort((a,b)=>a.depth-b.depth)){
         const p=projectPlant(plant),impact=this.effects.some(f=>f.targetId===plant.id&&f.life>=shotStyle(f.damage).flight&&f.life<shotStyle(f.damage).flight+.13);this.plant(p.x*w,p.y*h,p.size*h*.65,plant.type,game.enemyTime,impact?.15:pending.has(plant.id)?0:plant.flash,plant.seed);
-        if(!plant.boss)for(let i=0;i<plant.maxHp;i++)this.ellipse(p.x*w+(i-(plant.maxHp-1)/2)*9,p.y*h-p.size*h*.79,2.7,2.7,i<plant.hp?CREAM:'#54482c55',INK,1);
-        if(game.palm?.active)this.ellipse(p.x*w,p.y*h+p.size*h*.65,p.size*h*.5,8,null,game.palm.active===2?'#ae88c4':'#65c6bb',2.5);
+        if(!plant.boss){
+          const bw=Math.max(28,p.size*h*.7),bx=p.x*w-bw/2,by=p.y*h-p.size*h*.85,ratio=clamp(plant.hp/plant.maxHp);
+          const previous=this.healthTrails.get(plant.id)??1,trail=Math.max(ratio,previous-(this.dt||0)*1.3);this.healthTrails.set(plant.id,trail);
+          c.fillStyle='#3d3335';c.fillRect(bx-1,by-1,bw+2,7);c.fillStyle='#dfaa63';c.fillRect(bx,by,bw*trail,5);c.fillStyle='#a4bb77';c.fillRect(bx,by,bw*ratio,5);
+        }
+        if(game.palm?.active)this.ellipse(p.x*w,p.y*h+p.size*h*.65,p.size*h*.5,8,null,'#ae88c4',2.5);
       }
+      for(const id of this.healthTrails.keys())if(!plants.some(p=>p.id===id))this.healthTrails.delete(id);
       const queen=game.plants.find(p=>p.finalBoss);if(queen)this.queenAttack(queen,game.enemyTime);
       for(const side of ['left','right']){
+        if(game.clapTime>0)continue;
         const hand=hands[side],color=HAND_COLORS[side];
         if(hand.stopping){this.stopGlove(side,color,game.palm?.active||0);continue;}
         const idle=this.reducedMotion?0:Math.sin(this.t*2.2+(side==='left'?0:1.6))*2;
@@ -206,13 +225,10 @@ export class GardenRenderer {
           this.ellipse(0,0,2,2,CREAM,color,1);c.restore();
         }
         this.glove(gun.x,gun.y,gun.scale,gun.angle,side,color,hand.visible?1:.24);
-        if(hand.visible&&game.burstRemaining>0){
-          const mx=gun.muzzle.x*w,my=gun.muzzle.y*h;c.save();c.translate(mx,my);c.rotate(this.reducedMotion?0:this.t);this.path('M-20 0 L-9 -7 L-8 -22 L2 -13 L17 -20 L12 -5 L25 2 L12 10 L14 24 L0 15 L-14 23 L-11 8Z','#ed713a','#ffc65a',2);this.ellipse(0,0,7,7,'#fff1c3',null);c.restore();
-        }
         if(hand.visible && hand.charge>.025){
           const q=hand.charge,full=q>=.999,mx=gun.muzzle.x*w,my=gun.muzzle.y*h;
           const pulse=this.reducedMotion?0:Math.sin(this.t*5)*1.5;
-          const r=(7+q*13+(full?pulse:0))*Math.min(1,gun.scale),style=shotStyle(game.burstRemaining>0?3:chargeDamage(q)),glow=style.color;
+          const r=(7+q*13+(full?pulse:0))*Math.min(1,gun.scale),style=shotStyle(chargeDamage(q)),glow=style.color;
           c.save();c.translate(mx,my);
           const halo=c.createRadialGradient(0,0,2,0,0,r*2.8);halo.addColorStop(0,style.light+'dd');halo.addColorStop(.32,glow+'88');halo.addColorStop(1,glow+'00');c.fillStyle=halo;c.beginPath();c.arc(0,0,r*2.8,0,Math.PI*2);c.fill();
           // Inked energy flecks spiral inward instead of a barely visible halo.
@@ -237,8 +253,10 @@ export class GardenRenderer {
           c.restore();
         }
       }
+      if(game.clapTime>0)this.drawClap(CLAP_DURATION-game.clapTime);
       for(const fx of this.effects){
         if(fx.life<0)continue;
+        if(fx.pulse){const u=fx.life/fx.duration;c.save();c.globalAlpha=1-u;this.ellipse(fx.aim.x*w,fx.aim.y*h,20+u*55,12+u*35,null,'#eed29c',4);c.restore();continue;}
         if(!fx.particle){this.drawShot(fx,hands);continue;}
         const t=fx.life/fx.duration;c.save();c.globalAlpha=1-t;
         const x=(fx.x+fx.vx*t)*w,y=(fx.y+fx.vy*t+.1*t*t)*h;c.translate(x,y);c.rotate(t*7);

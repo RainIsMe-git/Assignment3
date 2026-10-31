@@ -1,11 +1,11 @@
-import {GardenGame,automaticTargets,projectPlant,chargeDamage,CHARGE_MS,SHOT_COOLDOWN_MS,WAVE_COUNTS,clamp} from './core.mjs';
+import {GardenGame,automaticTargets,projectPlant,CHARGE_MS,SHOT_COOLDOWN_MS,WAVE_COUNTS,clamp} from './core.mjs';
 import {HandTracking} from './tracking.mjs';
 import {GardenRenderer} from './renderer.mjs';
 import {HandCamera} from './camera.mjs';
 import {GameAudio} from './audio.mjs';
 import {MAX_ENERGY,cameraStatusKey} from './palm-control.mjs';
 import {Tutorial,LESSONS} from './tutorial.mjs';
-import {BURST_EVERY,BURST_SECONDS} from './core.mjs';
+import {CLAP_EVERY} from './clap.mjs';
 import {language,setLanguage,resolveLanguage,t,applyTranslations,messages} from './i18n.mjs';
 const $=id=>document.getElementById(id),arena=document.querySelector('.arena'),sides=['left','right'];
 let preferred=resolveLanguage(navigator.languages?.length?navigator.languages:[navigator.language]);
@@ -36,7 +36,7 @@ function start(mode){
 function home(){
   audio.setActive(false);
   setupGeneration++;camera.stop();input='none';started=false;loading=false;tutorial.active=false;resetInput();game.reset();renderer.clear();arena.classList.remove('training');
-  for(const id of ['game-hud','bottom-hud','palm-hud','boss-hud','queen-alert','burst-hud','tutorial-hud','camera-panel','pause-overlay','result-overlay','error-box','loading'])$(id).hidden=true;
+  for(const id of ['game-hud','bottom-hud','palm-hud','boss-hud','queen-alert','clap-hud','tutorial-hud','camera-panel','pause-overlay','result-overlay','error-box','loading'])$(id).hidden=true;
   $('intro').hidden=false;$('poster-stamp').hidden=false;$('feedback').textContent='';feedbackKey='';arena.classList.remove('playing','tracking-lost');
 }
 function pauseCopy(){
@@ -71,9 +71,10 @@ function shoot(side,charge=hands[side].charge){
   if(!event){if(input==='camera')tracking.slots[side].trigger.chargeMs=charge*CHARGE_MS;return;}
   h.lastShot=now;h.charge=0;h.aim={...event.aim};renderer.shot(event,h);audio.shoot(event);
   tutorial.shot(event,game);
-  if(event.burstStarted){feedback('burstStarted',1.5);audio.wave();}
-  else if(game.combo>2&&!['waveIncoming','waveCleared','burstStarted'].includes(feedbackKey))feedback('comboFeedback',.8,{count:game.combo});refreshTargets();
+  if(event.clapUnlocked){feedback('clapReady',3);audio.wave();}
+  else if(game.combo>2&&!['waveIncoming','waveCleared','clapReady'].includes(feedbackKey))feedback('comboFeedback',.8,{count:game.combo});refreshTargets();
 }
+function clap(){if(!started||$('help-dialog').open||!game.clap())return;feedback('clapBang',1);resetInput();}
 function onHands(result){
   if(input!=='camera'||!started)return;
   const now=performance.now();lastResult=now;const update=tracking.update(result.hands,now);
@@ -83,7 +84,7 @@ function onHands(result){
   if(game.pauseReason==='lost-hand'){
     if(update.valid){resumeSince ??= now;if(now-resumeSince>=240){game.resume();resetInput();arena.classList.remove('tracking-lost');$('pause-overlay').hidden=true;if(game.mode==='survival'&&game.elapsed===0)feedback('waveIncoming',2.2,{wave:game.wave,count:WAVE_COUNTS[game.wave-1]});else feedback('go',1);}}
     else resumeSince=null;
-  }else if(!game.pauseReason)for(const shot of update.shots)shoot(shot.hand,shot.charge);
+  }else if(!game.pauseReason){if(update.clap)clap();else for(const shot of update.shots)shoot(shot.hand,shot.charge);}
 }
 function challenge(){
   if(!started||game.pauseReason)return;tutorial.active=false;tutorial.ready=false;arena.classList.remove('training');$('tutorial-hud').hidden=true;game.reset('survival');renderer.clear();resetInput();$('challenge').hidden=true;$('result-overlay').hidden=true;feedback('waveIncoming',2.2,{wave:game.wave,count:WAVE_COUNTS[game.wave-1]});
@@ -100,6 +101,7 @@ window.addEventListener('keydown',e=>{
   if($('help-dialog').open)return;
   if(e.code==='Escape'&&started){e.preventDefault();if(game.pauseReason)resume();else pause('manual');return;}
   if(input!=='mouse'||!started||game.pauseReason||game.finished||e.target.closest('input,textarea,[contenteditable="true"]'))return;
+  if(e.code==='KeyC'&&!e.repeat){e.preventDefault();clap();return;}
   if(['KeyQ','KeyE'].includes(e.code)){e.preventDefault();mousePalms[e.code==='KeyQ'?'left':'right']=true;return;}
   if(e.target.closest('button,a')&&e.code==='Space')return;
   if(!['KeyA','KeyD','Space'].includes(e.code))return;e.preventDefault();if(e.repeat)return;
@@ -120,7 +122,7 @@ $('camera-start').onclick=$('retry-camera').onclick=startCamera;
 $('mouse-start').onclick=$('fallback').onclick=()=>{if(sound)void audio.unlock();home();start('mouse');};
 for(const id of ['home','pause-home','result-home','error-home','stop-camera','cancel-loading'])$(id).onclick=home;
 $('pause').onclick=()=>pause('manual');$('resume').onclick=()=>{if(sound)void audio.unlock();resume();};$('challenge').onclick=challenge;
-$('tutorial-skip').onclick=challenge;
+$('tutorial-skip').onclick=challenge;$('clap-hud').onclick=()=>{if(input==='mouse')clap();};
 $('replay').onclick=()=>{game.finished=false;game.pauseReason='';challenge();};
 $('sound').onclick=()=>{sound=!sound;audio.setEnabled(sound);if(sound)void audio.unlock();refreshLanguage();};
 $('film').onclick=()=>{renderer.film=!renderer.film;arena.classList.toggle('film-off',!renderer.film);refreshLanguage();};
@@ -139,17 +141,18 @@ function refreshLanguage(){
 function updateHud(now){
   $('tutorial-hud').hidden=!started||!tutorial.active;
   if(tutorial.active){
-    const step=tutorial.step,shotStep=['fire','charge','burst'].includes(step);
+    const step=tutorial.step,shotStep=['fire','charge'].includes(step);
     $('tutorial-icon').src=shotStep?'./assets/gun-two.svg':'./assets/palm.svg';$('tutorial-hud').dataset.step=step;
     $('tutorial-title').textContent=t(tutorial.success?'lessonSuccess':'lesson_'+step);
     $('tutorial-instruction').textContent=t('teach_'+step+'_'+input);
     $('tutorial-progress').textContent=LESSONS.map((_,i)=>i<tutorial.index?'✓':i===tutorial.index?'●':'○').join('  ');
     $('tutorial-progress').setAttribute('aria-label',t('lessonProgress',{step:tutorial.index+1,total:LESSONS.length}));
-    $('tutorial-counter').textContent=tutorial.success?'✓':step==='fire'?tutorial.progress+' / 2':step==='burst'?(game.combo%BURST_EVERY)+' / '+BURST_EVERY:step==='charge'?Math.round(Math.max(...Object.values(hands).map(h=>h.charge))*100)+'%':['freeze','push'].includes(step)?Math.min(100,Math.round(tutorial.progress*100))+'%':step==='recharge'?Math.min(100,Math.round(tutorial.progress/.6*100))+'%':'✷';
+    $('tutorial-counter').textContent=tutorial.success?'✓':step==='fire'?tutorial.progress+' / 2':step==='charge'?Math.round(Math.max(...Object.values(hands).map(h=>h.charge))*100)+'%':['freeze','push'].includes(step)?Math.min(100,Math.round(tutorial.progress/(step==='push'?1.2:1)*100))+'%':step==='recharge'?Math.min(100,Math.round(tutorial.progress/.6*100))+'%':'✷';
   }
-  $('burst-hud').hidden=!started;$('burst-hud').dataset.active=String(game.burstRemaining>0);
-  $('burst-label').textContent=game.burstRemaining>0?t('burstActive',{seconds:game.burstRemaining.toFixed(1)}):t('burstProgress',{count:game.combo%BURST_EVERY,total:BURST_EVERY});
-  $('burst-fill').style.width=(game.burstRemaining>0?game.burstRemaining/BURST_SECONDS:(game.combo%BURST_EVERY)/BURST_EVERY)*100+'%';
+  $('clap-hud').hidden=!started||game.clapTime>0;$('clap-hud').dataset.ready=String(game.clapReady);
+  $('clap-hud').disabled=!game.clapReady||!!game.pauseReason||game.finished||input!=='mouse';
+  $('clap-label').textContent=game.clapReady?t(input==='mouse'?'clapReadyMouse':'clapReady'):t('clapProgress',{count:game.combo%CLAP_EVERY,total:CLAP_EVERY});
+  $('clap-fill').style.width=(game.clapReady?100:game.combo%CLAP_EVERY/CLAP_EVERY*100)+'%';
   $('score').textContent=String(game.score).padStart(5,'0');$('time').textContent=game.mode==='practice'?'∞':game.waveState==='break'?String(Math.ceil(game.breakRemaining)):game.wave+' / '+WAVE_COUNTS.length;
   $('health').textContent=game.mode==='practice'?'♥ ∞':'♥ '.repeat(game.hp)+'♡ '.repeat(5-game.hp);
   $('mode-name').textContent=game.mode==='practice'?t('practice'):game.waveState==='break'?t('nextWave',{wave:game.wave+1}):t('waveEnemies',{count:game.plants.length+game.toSpawn});
@@ -157,21 +160,21 @@ function updateHud(now){
   $('combo').textContent=game.combo>1?`×${game.combo}　✿ ${game.kills}`:`✿ ${game.kills}`;
   const energy=game.palm.energy/MAX_ENERGY;
   $('palm-energy').style.setProperty('--energy',energy*100+'%');$('palm-energy').setAttribute('aria-valuenow',String(Math.round(energy*100)));$('palm-energy').setAttribute('aria-label',t('energyLabel',{seconds:game.palm.energy.toFixed(1)}));
-  $('palm-time').textContent=game.palm.energy.toFixed(1)+'s';$('palm-hud').dataset.state=game.palm.active===2?'push':game.palm.active===1?'slow':energy===0?'empty':'ready';
+  $('palm-time').textContent=game.palm.energy.toFixed(1)+'s';$('palm-hud').dataset.state=game.palm.active===2?'push':game.palm.active===1?'push':energy===0?'empty':'ready';
   $('palm-state').textContent=t(game.palm.active===2?'pushing':game.palm.active===1?'slowing':energy===0?'energyEmpty':'palmReady');
   if(tutorial.unlimitedEnergy){$('palm-time').textContent='∞';$('palm-energy').setAttribute('aria-label',t('trainingEnergy'));if(!game.palm.active)$('palm-state').textContent=t('trainingEnergy');}
   for(const side of sides)$('stop-'+side).setAttribute('aria-pressed',String(!!hands[side].stopping));
   const boss=game.plants.find(p=>p.boss);$('boss-hud').hidden=!boss||!started;
   if(boss){$('boss-health').style.setProperty('--boss-hp',100*boss.hp/boss.maxHp+'%');$('boss-health').setAttribute('aria-valuenow',String(boss.hp));$('boss-health').setAttribute('aria-valuemax',String(boss.maxHp));$('boss-health').setAttribute('aria-label',t('bossHealth',{hp:boss.hp,max:boss.maxHp}));$('boss-name').textContent=t(boss.finalBoss?'queenName':boss.hp<=boss.maxHp/2?'bossRage':'bossName')+(boss.finalBoss?' · ⛨ '+Object.values(boss.duel.wards).filter(Boolean).length:'');}
   const queen=boss?.finalBoss?boss:null;$('queen-alert').hidden=!queen||!started;arena.classList.toggle('queen-battle',!!queen&&started);
-  if(queen){const q=queen.duel,threat=['windup','attack'].includes(q.phase);$('queen-alert').dataset.kind=threat?q.kind:q.phase;$('queen-action').textContent=t(threat?(q.kind==='freeze'?'queenFreeze':'queenPush'):q.phase==='exposed'?'queenExposed':'queenRest');$('queen-second-palm').hidden=!threat||q.kind!=='push';$('queen-counter').style.width=(threat?Math.min(1,q.counter/(q.kind==='freeze'?.6:.75)):q.phase==='exposed'?q.remaining/3.5:0)*100+'%';}
+  if(queen){const q=queen.duel,threat=['windup','attack'].includes(q.phase);$('queen-alert').dataset.kind=threat?q.kind:q.phase;$('queen-action').textContent=t(threat?(q.kind==='freeze'?'queenFreeze':'queenPush'):q.phase==='exposed'?'queenExposed':q.phase==='waiting'?'queenWaiting':q.phase==='reflect'?'queenReturning':'queenRest');$('queen-second-palm').hidden=!threat||q.kind!=='push';$('queen-counter').style.width=(threat?Math.min(1,q.counter/(q.kind==='freeze'?.35:.45)):q.phase==='exposed'?q.remaining/4.5:0)*100+'%';}
   let valid=0,visible=0;
   for(const side of sides){
     const h=hands[side],slot=tracking.slots[side];visible+=h.visible?1:0;valid+=now-slot.lastValid<200?1:0;
     const state=h.stopping?'stop':input==='mouse'?'ready':!h.visible?'lost':now-slot.lastValid>=200?'recover':slot.trigger.latched?'lower':'ready';
     $(side+'-status').dataset.state=state;$(side+'-status').textContent=(side==='left'?'L ':'R ')+({ready:'●',lost:'○',recover:'◌',lower:'↙',stop:'✋'}[state]);
     $(side+'-status').title=t({ready:'statusReady',lost:'statusLost',recover:'statusRecover',lower:'statusLower',stop:'statusStop'}[state]);
-    const meter=$(side+'-charge'),amount=Math.round(h.charge*100),damage=chargeDamage(h.charge);
+    const meter=$(side+'-charge'),amount=Math.round(h.charge*100),damage=Number((1+2*h.charge).toFixed(1));
     meter.style.setProperty('--charge',amount+'%');meter.setAttribute('aria-valuenow',String(amount));meter.setAttribute('aria-label',t('chargeLabel',{side:t(side==='left'?'leftGun':'rightGun'),damage}));meter.classList.toggle('full',h.charge>=1);$(side+'-power').textContent='×'+damage;
   }
   const palms=sides.filter(side=>hands[side].visible&&hands[side].stopping).length;
@@ -194,7 +197,9 @@ function frame(now){
         if(event.type==='damage'){renderer.hurt=1;feedback('ouch',.7);audio.hurt();}
         if(event.type==='wave-start'){feedback('waveIncoming',2.2,{wave:event.wave,count:event.count});audio.wave();}
         if(event.type==='wave-clear')feedback('waveCleared',2.4,{wave:event.wave});
-        if(event.type==='queen-warning')audio.wave();
+        if(event.type==='queen-warning'||event.type==='queen-awake')audio.wave();
+        if(event.type==='clap-impact'){renderer.clapImpact(event.impacts);audio.hurt();audio.wave();}
+        if(event.type==='queen-reflected'){const queen=game.plants.find(p=>p.finalBoss);if(queen)renderer.clapImpact([{aim:projectPlant(queen)}]);audio.hurt();}
         if(event.type==='queen-counter'){feedback(event.kind==='push'?'queenReflected':'queenStopped',1.5);audio.wave();}
         if(event.type==='finish')finish();
       }

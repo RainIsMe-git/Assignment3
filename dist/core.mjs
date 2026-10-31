@@ -1,6 +1,6 @@
 import {PalmEnergy} from './palm-control.mjs';
 import {createQueen,updateQueen} from './queen.mjs';
-export const BURST_EVERY=20, BURST_SECONDS=6, BURST_RADIUS=.23;
+import {CLAP_EVERY,CLAP_DAMAGE,CLAP_CONTACT,CLAP_DURATION} from './clap.mjs';
 // Pure rules shared by the camera, mouse demo and automated tests.
 export const clamp = (v, a = 0, b = 1) => Math.max(a, Math.min(b, v));
 const distance = (a,b) => Math.hypot(a.x-b.x,a.y-b.y,(a.z||0)-(b.z||0));
@@ -33,7 +33,7 @@ export function readGunPose(points, worldPoints, aspectRatio=1) {
 export const CHARGE_MS=2000, TRACKING_GRACE_MS=750;
 export const SHOT_COOLDOWN_MS=110;
 export const WAVE_COUNTS=Object.freeze([6,10,16,22,30,34,38,42,46,50]);
-export const regularHealth=(type,wave)=>Math.min(5,[1,1,2][type]+Math.max(0,Math.floor((wave-4)/2)));
+export const regularHealth=(type,wave)=>Math.min(5,Math.round((1+type*.3+Math.max(0,wave-1)*.36)*100)/100);
 export const chargeDamage=charge=>1+Math.floor(clamp(charge)*2+.000001);
 export class GunTrigger {
   constructor(){this.reset();}
@@ -80,7 +80,7 @@ export function projectPlant(plant){
 // Pick the most urgent enemies, then assign them in screen order. Physical hand
 // position and handedness labels never control aiming, so crossing is unnecessary.
 export function automaticTargets(plants,activeSides=['left','right']){
-  const live=plants.filter(p=>p.hp>0).sort((a,b)=>b.depth-a.depth||a.id-b.id);
+  const live=plants.filter(p=>p.hp>0&&(!p.finalBoss||p.duel.phase!=='waiting')).sort((a,b)=>b.depth-a.depth||a.id-b.id);
   const targets={left:null,right:null};
   if(!live.length)return targets;
   if(activeSides.length===1){targets[activeSides[0]]=live[0];return targets;}
@@ -92,13 +92,13 @@ export class GardenGame {
   constructor(random=Math.random){this.random=random;this.reset();}
   reset(mode='practice'){
     this.mode=mode;this.plants=[];this.score=0;this.kills=0;this.shots=0;this.hits=0;this.combo=0;this.bestCombo=0;this.hp=5;this.elapsed=0;this.spawnIn=1;this.finished=false;this.won=false;this.pauseReason='';this.nextId=1;this.invulnerable=0;
-    this.wave=0;this.waveState='active';this.toSpawn=0;this.breakRemaining=0;this.palm=new PalmEnergy();this.burstRemaining=0;this.enemyTime=0;
+    this.wave=0;this.waveState='active';this.toSpawn=0;this.breakRemaining=0;this.palm=new PalmEnergy();this.clapReady=false;this.clapTime=0;this.clapHit=false;this.enemyTime=0;
     if(mode==='survival')this.beginWave();else this.spawn(0,.48);
   }
   beginWave(){
     this.wave++;this.waveState='active';this.toSpawn=WAVE_COUNTS[this.wave-1];
     if(this.wave===5){this.spawn(0,.12,3);this.toSpawn--;}
-    if(this.wave===WAVE_COUNTS.length){this.spawn(0,.42,4);this.toSpawn--;}
+    if(this.wave===WAVE_COUNTS.length){this.spawn(0,.015,4);this.toSpawn--;}
     this.spawnBurst();
   }
   spawnBurst(){
@@ -114,34 +114,50 @@ export class GardenGame {
   pause(reason){this.pauseReason=reason;}
   resume(){this.pauseReason='';}
   shoot(hand,charge=0,activeSides=['left','right']){
-    if(this.finished||this.pauseReason||this.palm.hands[hand])return null;
+    if(this.finished||this.pauseReason||this.clapTime>0||this.palm.hands[hand])return null;
     const target=automaticTargets(this.plants,activeSides)[hand]||automaticTargets(this.plants,[hand])[hand];
     // No enemy means no spent shot/charge and no false miss in the statistics.
     if(!target)return null;
-    const point=projectPlant(target),damage=chargeDamage(charge);
+    const point=projectPlant(target),damage=chargeDamage(charge),shotPower=1+2*clamp(charge);
     this.shots++;this.hits++;this.combo++;this.bestCombo=Math.max(this.bestCombo,this.combo);
-    const burstStarted=this.combo%BURST_EVERY===0;
-    if(burstStarted)this.burstRemaining=BURST_SECONDS;
-    const explosive=this.burstRemaining>0;
-    // Resolve all targets from pre-hit positions. Splash never advances combo.
-    const targets=[target,...(explosive?this.plants.filter(p=>p!==target&&p.hp>0&&Math.hypot(projectPlant(p).x-point.x,(projectPlant(p).y-point.y)*1.3)<=BURST_RADIUS):[])];
+    const clapUnlocked=this.combo%CLAP_EVERY===0&&!this.clapReady;
+    if(clapUnlocked)this.clapReady=true;
+    const targets=[target];
     const impacts=targets.map(p=>{
-      const plant={...p},aim=projectPlant(p),power=p.finalBoss&&p.duel.phase!=='exposed'?1:damage;
+      const plant={...p},aim=projectPlant(p),power=p.finalBoss&&p.duel.phase!=='exposed'?1:shotPower;
       const floor=p.finalBoss?(p.duel.wards.freeze?60:p.duel.wards.push?30:0):0;
-      const dealt=Math.min(power,Math.max(0,p.hp-floor));p.hp-=dealt;p.flash=.22;p.depth=Math.max(p.finalBoss?.28:.02,p.depth-(p.boss?.015+dealt*.008:.10+dealt*.035));
+      const dealt=Math.min(power,Math.max(0,p.hp-floor));p.hp-=dealt;p.flash=.22;p.depth=Math.max(p.finalBoss?.08:.02,p.depth-(p.boss?.015+dealt*.008:.10+dealt*.035));
       const killed=p.hp<=0,points=killed?(p.finalBoss?5000:p.boss?1500:100+Math.min(this.combo,10)*10):dealt?30:0;
       this.score+=points;if(killed)this.kills++;
-      return {plant,aim:{x:aim.x,y:aim.y},targetId:p.id,killed,points,type:p.type,damage:power,appliedDamage:dealt,blocked:dealt===0};
+      return {plant,aim:{x:aim.x,y:aim.y},targetId:p.id,killed,points,type:p.type,damage,appliedDamage:dealt,blocked:dealt===0};
     });
     this.plants=this.plants.filter(p=>p.hp>0);
-    return {hand,...impacts[0],charge:clamp(charge),hit:true,explosive,burstStarted,splash:impacts.slice(1),radius:BURST_RADIUS};
+    return {hand,...impacts[0],charge:clamp(charge),hit:true,clapUnlocked};
+  }
+  clap(){
+    if(!this.clapReady||this.clapTime>0||this.pauseReason||this.finished)return false;
+    this.clapReady=false;this.clapTime=CLAP_DURATION;this.clapHit=false;return true;
   }
   hurt(amount,events){if(this.invulnerable===0){this.hp=Math.max(0,this.hp-amount);this.combo=0;this.invulnerable=1;events.push({type:'damage'});}}
   tick(dt){
     if(this.finished||this.pauseReason)return [];
-    dt=clamp(dt,0,.1);this.elapsed+=dt;this.invulnerable=Math.max(0,this.invulnerable-dt);this.palm.update(dt);this.burstRemaining=Math.max(0,this.burstRemaining-dt);
-    const enemyDt=dt*(1-(this.palm.active?this.palm.strength:0));this.enemyTime+=enemyDt;
+    dt=clamp(dt,0,.1);this.elapsed+=dt;this.invulnerable=Math.max(0,this.invulnerable-dt);this.palm.update(dt);
+    const enemyDt=dt;this.enemyTime+=enemyDt;
     const events=[];
+    if(this.clapTime>0){
+      this.clapTime=Math.max(0,this.clapTime-dt);
+      if(!this.clapHit&&this.clapTime<=CLAP_DURATION-CLAP_CONTACT){
+        this.clapHit=true;const impacts=[];
+        for(const p of this.plants){
+          const floor=p.finalBoss?(p.duel.phase==='waiting'?p.hp:p.duel.wards.freeze?60:p.duel.wards.push?30:0):0;
+          const damage=Math.min(CLAP_DAMAGE,Math.max(0,p.hp-floor));p.hp-=damage;p.flash=.3;
+          if(damage)p.depth=Math.max(p.finalBoss?.08:.02,p.depth-.12);
+          const killed=p.hp<=0;this.score+=killed?(p.finalBoss?5000:p.boss?1500:150):damage?30:0;if(killed)this.kills++;
+          impacts.push({id:p.id,aim:projectPlant(p),damage,killed});
+        }
+        this.plants=this.plants.filter(p=>p.hp>0);events.push({type:'clap-impact',impacts});
+      }
+    }
     if(this.mode==='survival'&&this.waveState==='break'){
       this.breakRemaining=Math.max(0,this.breakRemaining-dt);
       if(this.breakRemaining<=0){this.beginWave();events.push({type:'wave-start',wave:this.wave,count:WAVE_COUNTS[this.wave-1]});}
@@ -155,19 +171,23 @@ export class GardenGame {
     for(const plant of this.plants){
       plant.flash=Math.max(0,plant.flash-dt);
       if(plant.finalBoss){
+        if(plant.duel.phase==='waiting'){
+          if(this.toSpawn>0||this.plants.some(p=>!p.finalBoss&&p.hp>0))continue;
+          plant.duel.phase='rest';plant.duel.remaining=5;events.push({type:'queen-awake'});
+        }
         const event=updateQueen(plant.duel,dt,this.palm);
         if(event){
           events.push({type:'queen-'+event.type,kind:event.kind});
           if(event.type==='hit')this.hurt(2,events);
-          if(event.type==='counter'&&event.kind==='push'){
+          if(event.type==='reflected'){
             plant.hp=Math.max(plant.duel.wards.freeze?60:0,plant.hp-8);plant.flash=.3;this.score+=200;
             if(plant.hp<=0){this.kills++;this.score+=5000;}
           }
         }
-        plant.depth=Math.max(.28,Math.min(.5,plant.depth+enemyDt*.025-(this.palm.active===2?dt*.18*this.palm.strength:0)));continue;
+        plant.depth=Math.max(.08,Math.min(.28,plant.depth+enemyDt*.035-(this.palm.active?dt*(this.palm.active===2?.18:.06)*this.palm.strength:0)));continue;
       }
       const slow=1-(this.palm.active?this.palm.strength:0);
-      const push=this.palm.active===2?.48*this.palm.strength*(plant.boss?.7:1):0;
+      const push=this.palm.active?(this.palm.active===2?.48:.14)*this.palm.strength*(plant.boss?.7:1):0;
       const speed=(this.mode==='practice'?.028:.045+this.wave*.007)*(plant.boss?(plant.hp<=plant.maxHp/2?1.25:.8):1);
       plant.depth=Math.max(.02,plant.depth+dt*(speed*slow-push));
       if(plant.depth>=1){

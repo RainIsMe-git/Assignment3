@@ -19,3 +19,5 @@
 - **手势造型参考：** 用户提供的 PSYCHOFINGER 截图及 [B 站视频页面](https://www.bilibili.com/video/BV1vtpY6kETr/)。最终手部按截图下方双手的轮廓比例重绘：宽掌、厚拇指、斜向食指和连续卷指，改为奶油白手套与复古袖口。此造型基于该参考，不声称是完全独立设计；未将原截图或动画文件打包为贴图。视频页面在工具中加载超时，后坐与回落动画为项目实现。
 
 - **本轮直接参考：** [Studio MDHR 官方媒体截图](https://studiomdhr.com/press-kits/)（Cagney Carnation）与 [Caitlin Russell：Cuphead Backgrounds](https://caitrussell.com/ch-bgs.html)。仅用于分析背景与角色层次，未作为游戏运行资源。被拒绝的 imagegen 草稿未用于最终背景。
+
+- 拍手技能手套：参考用户提供的双手相对拍掌示意图确定视角，运行素材为 `dist/clap-art.mjs` 中重新绘制的白手套路径；合拢、接触与收回通过 Canvas 变换播放，未把参考截图作为贴图。
