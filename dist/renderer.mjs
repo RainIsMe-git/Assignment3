@@ -1,6 +1,6 @@
 import {clamp,projectPlant} from './core.mjs';
 import {paintGarden} from './backdrop.mjs';
-import {handPaths,gunPlacement} from './hand-art.mjs';
+import {perspectiveHandPaths,gunPlacement} from './hand-art.mjs';
 const INK='#29242b', CREAM='#fff2d9', GREEN='#4f8a3c';
 export class GardenRenderer {
   constructor(canvas){
@@ -73,7 +73,7 @@ export class GardenRenderer {
   }
   glove(x,y,scale,angle,side,color,alpha=1,variant='two'){
     const c=this.c;c.save();c.globalAlpha=alpha;c.translate(x,y);c.rotate(angle);c.scale(scale*(side==='left'?1:-1),scale);
-    for(const [path,fill,width,stroke] of handPaths(variant,color))this.path(path,fill,width?stroke||INK:null,width);
+    for(const [path,fill,width,stroke] of perspectiveHandPaths(variant,color))this.path(path,fill,width?stroke||INK:null,width);
     c.restore();
   }
   shot(event,hand){

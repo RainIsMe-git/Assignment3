@@ -5,7 +5,7 @@ export class HandTracking {
   reset(){for(const slot of Object.values(this.slots)){slot.trigger.reset();slot.pose=null;slot.anchor=null;slot.lastSeen=slot.lastValid=slot.lastStrict=-Infinity;slot.visible=false;}}
   expire(now){for(const slot of Object.values(this.slots)){slot.visible=now-slot.lastValid<=TRACKING_GRACE_MS;if(!slot.visible)slot.trigger.miss(now);}}
   update(observations,now){
-    const candidates=(observations||[]).filter(o=>o.confidence>=.4).map(o=>({pose:readGunPose(o.landmarks),anchor:o.landmarks?.[0]})).filter(o=>o.pose&&o.anchor).slice(0,2);
+    const candidates=(observations||[]).filter(o=>o.confidence>=.4).map(o=>({pose:readGunPose(o.landmarks,o.worldLandmarks,o.aspectRatio),anchor:o.landmarks?.[0]})).filter(o=>o.pose&&o.anchor).slice(0,2);
     const cost=(o,side)=>{const s=this.slots[side];return s.anchor&&now-s.lastSeen<1200?Math.hypot(s.anchor.x-o.anchor.x,s.anchor.y-o.anchor.y):Math.abs((1-o.anchor.x)-(side==='left'?.25:.75));};
     const assigned={};
     if(candidates.length===2){const [a,b]=candidates,swap=cost(a,'right')+cost(b,'left')<cost(a,'left')+cost(b,'right');assigned.left=swap?b:a;assigned.right=swap?a:b;}

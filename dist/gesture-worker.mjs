@@ -31,6 +31,8 @@ self.onmessage = event => {
     const result = recognizer.recognizeForVideo(frame, timestamp);
     self.postMessage({ type: 'result', hands: result.landmarks.map((landmarks, i) => ({
       landmarks,
+      worldLandmarks: result.worldLandmarks?.[i],
+      aspectRatio: frame.width / frame.height,
       handedness: result.handedness[i]?.[0]?.categoryName || '',
       confidence: result.handedness[i]?.[0]?.score || 0
     })) });

@@ -2,8 +2,37 @@
 export const clamp = (v, a = 0, b = 1) => Math.max(a, Math.min(b, v));
 const distance = (a,b) => Math.hypot(a.x-b.x,a.y-b.y,(a.z||0)-(b.z||0));
 
-export function readGunPose(points) {
+export function readGunPose(points, worldPoints, aspectRatio=1) {
   if (!points || points.length !== 21 || points.some(p=>!Number.isFinite(p.x)||!Number.isFinite(p.y))) return null;
+  const valid3D=worldPoints?.length===21 && worldPoints.every(p=>[p.x,p.y,p.z].every(Number.isFinite));
+  // World coordinates share one metric scale. Image x/z use image width,
+  // whereas image y uses height: correct that mismatch in the fallback.
+  const metric=valid3D?worldPoints:points.map(p=>({x:p.x,y:p.y/Math.max(.5,Math.min(2,aspectRatio)),z:p.z||0}));
+  const palmSize=Math.max(distance(metric[0],metric[9]),distance(metric[5],metric[17])*1.05);
+  if(palmSize<.0001)return null;
+  const chain=(a,b,c,d)=>distance(metric[a],metric[d])/(distance(metric[a],metric[b])+distance(metric[b],metric[c])+distance(metric[c],metric[d])+palmSize*.0001);
+  const reach=(a,d)=>distance(metric[a],metric[d])/palmSize;
+  const finger=(a)=>({straight:chain(a,a+1,a+2,a+3),reach:reach(a,a+3)});
+  const fingers=[5,9,13,17].map(finger);
+  const towardCamera=(metric[5].z-metric[8].z)/palmSize;
+  // A forward-pointing index can occupy almost no screen area. Its depth
+  // and 3D chain, not its projected length, distinguish it from a closed fist.
+  if(valid3D || towardCamera>.35){
+    const extended=f=>f.straight>.76&&f.reach>.43;
+    const folded=f=>f.straight<.76 || f.reach<.42;
+    const thumb=chain(1,2,3,4)>.72 && reach(2,4)>.29 && reach(4,5)>.30;
+    const index=extended(fingers[0]) || (towardCamera>.45&&fingers[0].straight>.67&&fingers[0].reach>.50);
+    const middle=extended(fingers[1]);
+    const others=folded(fingers[2])&&folded(fingers[3]);
+    const gun=thumb&&index&&(middle||folded(fingers[1]))&&others;
+    const relaxedGun=chain(1,2,3,4)>.62&&reach(2,4)>.23&&reach(4,5)>.25&&fingers[0].straight>.64&&fingers[0].reach>.38&&others;
+    const axisLength=distance(metric[5],metric[8]);
+    return {gun,relaxedGun,variant:middle?'three':'two',source:valid3D?'world':'depth',
+      // Pitch of the pointing finger in camera space; translation and distance
+      // from the webcam cannot produce a shot. Upward recoil increases pitch.
+      lift:(metric[5].y-metric[8].y)/Math.max(axisLength,palmSize*.3)*1.25,
+      aim:{x:clamp(1-points[0].x,.06,.94),y:clamp(points[0].y,.22,.78)}};
+  }
   const scale = distance(points[0],points[9]);
   if (scale < .025) return null;
   const straight = (a,b,c,d) => distance(points[a],points[d]) / (distance(points[a],points[b])+distance(points[b],points[c])+distance(points[c],points[d])+.00001);
@@ -26,7 +55,7 @@ export const CHARGE_MS=2000, TRACKING_GRACE_MS=750;
 export const chargeDamage=charge=>1+Math.floor(clamp(charge)*2+.000001);
 export class GunTrigger {
   constructor(){this.reset();}
-  reset(){this.base=null;this.since=0;this.last=null;this.ready=false;this.latched=false;this.cooldownUntil=0;this.variant=null;this.chargeMs=0;this.interrupted=false;}
+  reset(){this.base=null;this.since=0;this.last=null;this.ready=false;this.latched=false;this.cooldownUntil=0;this.variant=null;this.source=null;this.chargeMs=0;this.interrupted=false;}
   get charge(){return clamp(this.chargeMs/CHARGE_MS);}
   miss(time){
     this.interrupted=true;
@@ -37,8 +66,9 @@ export class GunTrigger {
     const gap=this.last===null?0:time-this.last;
     if(gap>TRACKING_GRACE_MS)this.reset();
     const variant=pose.variant||'two';
-    const reacquired=this.interrupted||gap>220||(this.variant&&this.variant!==variant);
-    this.interrupted=false;this.variant=variant;this.last=time;
+    const source=pose.source||'image';
+    const reacquired=this.interrupted||gap>220||(this.variant&&this.variant!==variant)||(this.source&&this.source!==source);
+    this.interrupted=false;this.variant=variant;this.source=source;this.last=time;
     if(this.base===null){this.base=pose.lift;this.since=time;return null;}
     // Never infer a flick from motion that happened during an occlusion.
     if(reacquired){if(!this.latched)this.base=pose.lift;this.ready=false;this.since=time;return null;}

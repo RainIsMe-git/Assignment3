@@ -7,6 +7,7 @@
 - **预训练模型：** Google Gesture Recognizer，float16 / version 1；[模型说明](https://ai.google.dev/edge/mediapipe/solutions/vision/gesture_recognizer)。本项目没有训练模型。
 - **实现参考：** [Google Web Gesture Recognizer 文档](https://ai.google.dev/edge/mediapipe/solutions/vision/gesture_recognizer/web_js) 用于双手配置、handedness、21 个关键点及 worker 推理。指枪抬指检测和游戏规则为项目代码。
 - **模型分发：** jsDelivr 与 Google Cloud Storage。视频帧不发送给这些服务。
+- **三维识别参考：** [MediaPipe 手部关键点说明](https://developers.google.com/edge/mediapipe/solutions/vision/hand_landmarker/web_js)，用于区分图像归一化坐标和以米为单位的世界坐标、修正宽高比并处理指尖朝镜头的透视缩短。
 - **字体与声音：** 本机系统字体，无远程字体。音效由 Web Audio 合成，无外部录音。
 - **测试：** Node.js 内置测试运行器；Codex 浏览器工具用于页面验证。无需作为游戏运行依赖安装。
 - **课程样例：** 未提供或复制课程示例代码。
