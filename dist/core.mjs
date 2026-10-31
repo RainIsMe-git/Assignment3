@@ -28,10 +28,12 @@ export function readGunPose(points, worldPoints, aspectRatio=1) {
 // Relative upward flick, not an absolute pose. Translating the entire hand
 // leaves lift unchanged. Holding the raised finger never creates extra shots.
 export const CHARGE_MS=2000, TRACKING_GRACE_MS=750;
+export const SHOT_COOLDOWN_MS=110;
+export const WAVE_COUNTS=Object.freeze([5,8,11,14,18]);
 export const chargeDamage=charge=>1+Math.floor(clamp(charge)*2+.000001);
 export class GunTrigger {
   constructor(){this.reset();}
-  reset(){this.base=null;this.since=0;this.last=null;this.ready=false;this.latched=false;this.peak=0;this.cooldownUntil=0;this.source=null;this.chargeMs=0;this.interrupted=false;}
+  reset(){this.base=null;this.since=0;this.last=null;this.lastLift=null;this.ready=false;this.latched=false;this.peak=0;this.cooldownUntil=0;this.source=null;this.chargeMs=0;this.interrupted=false;}
   get charge(){return clamp(this.chargeMs/CHARGE_MS);}
   miss(time){
     this.interrupted=true;
@@ -43,13 +45,14 @@ export class GunTrigger {
     if(gap>TRACKING_GRACE_MS)this.reset();
     const source=pose.source||'image';
     const reacquired=this.interrupted||gap>220||(this.source&&this.source!==source);
+    const previousLift=this.lastLift;this.lastLift=pose.lift;
     this.interrupted=false;this.source=source;this.last=time;
     if(this.base===null){this.base=pose.lift;this.since=time;return null;}
     // Never infer a flick from motion that happened during an occlusion.
     if(reacquired){if(!this.latched)this.base=pose.lift;this.ready=false;this.since=time;return null;}
     if(this.latched){
       this.peak=Math.max(this.peak,pose.lift);
-      if(pose.lift<this.peak-.14 && time>=this.cooldownUntil){this.latched=false;this.ready=false;this.since=time;this.base=pose.lift;}
+      if(pose.lift<this.peak-.12){this.latched=false;this.ready=true;this.since=time;this.base=pose.lift;}
       return null;
     }
     if(!this.ready){
@@ -57,8 +60,10 @@ export class GunTrigger {
       this.ready=time-this.since>=120;return null;
     }
     this.chargeMs=Math.min(CHARGE_MS,this.chargeMs+Math.max(0,Math.min(gap,200)));
-    if(pose.lift-this.base>.16 && time>=this.cooldownUntil){
-      const shot={charge:this.charge};this.chargeMs=0;this.latched=true;this.peak=pose.lift;this.cooldownUntil=time+230;return shot;
+    const delta=pose.lift-this.base;
+    const fastFlick=gap>0&&gap<=100&&previousLift!==null&&delta>.12&&(pose.lift-previousLift)/gap>.0012;
+    if((delta>.16||fastFlick) && time>=this.cooldownUntil){
+      const shot={charge:this.charge};this.chargeMs=0;this.latched=true;this.peak=pose.lift;this.cooldownUntil=time+SHOT_COOLDOWN_MS;return shot;
     }
     this.base=Math.min(this.base,pose.lift);return null;
   }
@@ -82,9 +87,16 @@ export function automaticTargets(plants,activeSides=['left','right']){
 export class GardenGame {
   constructor(random=Math.random){this.random=random;this.reset();}
   reset(mode='practice'){
-    this.mode=mode;this.plants=[];this.score=0;this.kills=0;this.shots=0;this.hits=0;this.combo=0;this.bestCombo=0;this.hp=5;this.elapsed=0;this.remaining=75;this.spawnIn=1;this.finished=false;this.won=false;this.pauseReason='';this.nextId=1;this.invulnerable=0;this.spawn(0,.48);
+    this.mode=mode;this.plants=[];this.score=0;this.kills=0;this.shots=0;this.hits=0;this.combo=0;this.bestCombo=0;this.hp=5;this.elapsed=0;this.spawnIn=1;this.finished=false;this.won=false;this.pauseReason='';this.nextId=1;this.invulnerable=0;
+    this.wave=0;this.waveState='active';this.toSpawn=0;this.breakRemaining=0;
+    if(mode==='survival')this.beginWave();else this.spawn(0,.48);
   }
-  get wave(){return Math.min(5,1+Math.floor(this.elapsed/15));}
+  beginWave(){this.wave++;this.waveState='active';this.toSpawn=WAVE_COUNTS[this.wave-1];this.spawnBurst();}
+  spawnBurst(){
+    const count=Math.min(this.toSpawn,3+this.wave*2,16-this.plants.length);
+    for(let i=0;i<count;i++)this.spawn(-.9+1.8*(i+.5)/count+(this.random()-.5)*.06,.06+this.random()*.10);
+    this.toSpawn-=count;this.spawnIn=2.2;
+  }
   spawn(lane,depth=.03){
     const type=this.nextId%3;
     this.plants.push({id:this.nextId++,lane:lane??(this.random()*1.76-.88),depth,type,hp:[3,2,4][type],maxHp:[3,2,4][type],flash:0,seed:this.random()*6.28});
@@ -109,14 +121,15 @@ export class GardenGame {
     if(this.finished||this.pauseReason)return [];
     dt=clamp(dt,0,.1);this.elapsed+=dt;this.invulnerable=Math.max(0,this.invulnerable-dt);
     const events=[];
-    if(this.mode==='survival'){
-      this.remaining=Math.max(0,75-this.elapsed);
-      if(this.remaining===0){this.finished=true;this.won=true;return [{type:'finish'}];}
+    if(this.mode==='survival'&&this.waveState==='break'){
+      this.breakRemaining=Math.max(0,this.breakRemaining-dt);
+      if(this.breakRemaining<=0){this.beginWave();events.push({type:'wave-start',wave:this.wave,count:WAVE_COUNTS[this.wave-1]});}
+      return events;
     }
     this.spawnIn-=dt;
     if(this.spawnIn<=0){
-      if(this.plants.length<(this.mode==='practice'?3:7))this.spawn();
-      this.spawnIn=this.mode==='practice'?2.8:Math.max(.65,2-this.wave*.23);
+      if(this.mode==='practice'){if(this.plants.length<3)this.spawn();this.spawnIn=2.8;}
+      else if(this.toSpawn>0)this.spawnBurst();
     }
     for(const plant of this.plants){
       plant.flash=Math.max(0,plant.flash-dt);
@@ -129,6 +142,10 @@ export class GardenGame {
     this.plants=this.plants.filter(p=>p.hp>0);
     if(!this.plants.length && this.mode==='practice')this.spawnIn=Math.min(this.spawnIn,.6);
     if(this.hp<=0){this.finished=true;events.push({type:'finish'});}
+    else if(this.mode==='survival'&&!this.plants.length&&this.toSpawn===0){
+      if(this.wave===WAVE_COUNTS.length){this.finished=true;this.won=true;events.push({type:'finish'});}
+      else{this.waveState='break';this.breakRemaining=3.5;events.push({type:'wave-clear',wave:this.wave});}
+    }
     return events;
   }
 }

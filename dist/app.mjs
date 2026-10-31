@@ -1,4 +1,4 @@
-import {GardenGame,automaticTargets,projectPlant,chargeDamage,CHARGE_MS,clamp} from './core.mjs';
+import {GardenGame,automaticTargets,projectPlant,chargeDamage,CHARGE_MS,SHOT_COOLDOWN_MS,WAVE_COUNTS,clamp} from './core.mjs';
 import {HandTracking} from './tracking.mjs';
 import {GardenRenderer} from './renderer.mjs';
 import {HandCamera} from './camera.mjs';
@@ -60,11 +60,11 @@ async function startCamera(){
 }
 function shoot(side,charge=hands[side].charge){
   if(!started||game.pauseReason||game.finished||$('help-dialog').open)return;
-  const h=hands[side],now=performance.now();if(now-h.lastShot<180)return;
+  const h=hands[side],now=performance.now();if(input==='mouse'&&now-h.lastShot<SHOT_COOLDOWN_MS)return;
   const event=game.shoot(side,charge,activeSides());
   if(!event){if(input==='camera')tracking.slots[side].trigger.chargeMs=charge*CHARGE_MS;return;}
   h.lastShot=now;h.charge=0;h.aim={...event.aim};renderer.shot(event,h);audio.shoot(event);
-  if(game.combo>2)feedback('comboFeedback',.8,{count:game.combo});refreshTargets();
+  if(game.combo>2&&!['waveIncoming','waveCleared'].includes(feedbackKey))feedback('comboFeedback',.8,{count:game.combo});refreshTargets();
 }
 function onHands(result){
   if(input!=='camera'||!started)return;
@@ -72,12 +72,12 @@ function onHands(result){
   if(update.valid)lastGun=now;
   for(const side of sides){const slot=tracking.slots[side],h=hands[side];h.visible=slot.visible;h.pose=slot.pose;h.charge=slot.trigger.charge;}
   if(game.pauseReason==='lost-hand'){
-    if(update.valid){resumeSince ??= now;if(now-resumeSince>=240){game.resume();resetInput();arena.classList.remove('tracking-lost');$('pause-overlay').hidden=true;feedback('go',1);}}
+    if(update.valid){resumeSince ??= now;if(now-resumeSince>=240){game.resume();resetInput();arena.classList.remove('tracking-lost');$('pause-overlay').hidden=true;if(game.mode==='survival'&&game.elapsed===0)feedback('waveIncoming',2.2,{wave:game.wave,count:WAVE_COUNTS[0]});else feedback('go',1);}}
     else resumeSince=null;
   }else if(!game.pauseReason)for(const shot of update.shots)shoot(shot.hand,shot.charge);
 }
 function challenge(){
-  if(!started||game.pauseReason)return;game.reset('survival');renderer.clear();resetInput();$('challenge').hidden=true;$('result-overlay').hidden=true;feedback('readyGo',2);
+  if(!started||game.pauseReason)return;game.reset('survival');renderer.clear();resetInput();$('challenge').hidden=true;$('result-overlay').hidden=true;feedback('waveIncoming',2.2,{wave:game.wave,count:WAVE_COUNTS[0]});
   if(input==='camera')pause('lost-hand');
 }
 function renderResult(){
@@ -117,9 +117,10 @@ function refreshLanguage(){
   updateHud(performance.now());
 }
 function updateHud(now){
-  $('score').textContent=String(game.score).padStart(5,'0');$('time').textContent=game.mode==='practice'?'∞':String(Math.ceil(game.remaining)).padStart(2,'0');
+  $('score').textContent=String(game.score).padStart(5,'0');$('time').textContent=game.mode==='practice'?'∞':game.waveState==='break'?String(Math.ceil(game.breakRemaining)):game.wave+' / '+WAVE_COUNTS.length;
   $('health').textContent=game.mode==='practice'?'♥ ∞':'♥ '.repeat(game.hp)+'♡ '.repeat(5-game.hp);
-  $('mode-name').textContent=game.mode==='practice'?t('practice'):'●'.repeat(game.wave)+'○'.repeat(5-game.wave);
+  $('mode-name').textContent=game.mode==='practice'?t('practice'):game.waveState==='break'?t('nextWave',{wave:game.wave+1}):t('waveEnemies',{count:game.plants.length+game.toSpawn});
+  $('time').setAttribute('aria-label',game.mode==='practice'?t('practice'):t('waveLabel',{wave:game.wave,total:WAVE_COUNTS.length}));
   $('combo').textContent=game.combo>1?`×${game.combo}　✿ ${game.kills}`:`✿ ${game.kills}`;
   let valid=0,visible=0;
   for(const side of sides){
@@ -142,7 +143,12 @@ function frame(now){
       if(now-lastResult>12000&&game.pauseReason==='lost-hand')showError('trackingTimeout');
     }
     if(!game.pauseReason){
-      for(const event of game.tick(dt)){if(event.type==='damage'){renderer.hurt=1;feedback('ouch',.7);audio.hurt();}if(event.type==='finish')finish();}
+      for(const event of game.tick(dt)){
+        if(event.type==='damage'){renderer.hurt=1;feedback('ouch',.7);audio.hurt();}
+        if(event.type==='wave-start'){feedback('waveIncoming',2.2,{wave:event.wave,count:event.count});audio.wave();}
+        if(event.type==='wave-clear')feedback('waveCleared',2.4,{wave:event.wave});
+        if(event.type==='finish')finish();
+      }
       refreshTargets();
       if(!game.finished)for(const h of Object.values(hands)){
         if(input==='mouse')h.charge=clamp(h.charge+dt*1000/CHARGE_MS);

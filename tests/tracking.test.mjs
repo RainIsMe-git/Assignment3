@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {HandTracking} from '../dist/tracking.mjs';
+import {HandTracking,physicalHand} from '../dist/tracking.mjs';
 import {readGunPose} from '../dist/core.mjs';
 function observation(offset=0,lift=0,handedness='Left'){
   const p=Array.from({length:21},()=>({x:.5,y:.6,z:0}));p[0]={x:.5,y:.7};
@@ -36,4 +36,24 @@ test('a relaxed thumb arms immediately and stays active without a strict pose',(
   for(let now=80;now<=800;now+=80)assert.equal(tracking.update([weak],now).valid,1);
   const lifted=structuredClone(weak);lifted.landmarks[8].y-=.04;
   assert.equal(tracking.update([lifted],880).shots.length,1);
+});
+
+test('anatomical left and right are preserved even when first seen on the wrong screen half',()=>{
+ assert.equal(physicalHand('Right'),'left');assert.equal(physicalHand('Left'),'right');
+ for(const [label,side,offset] of [['Right','left',-.15],['Left','right',.15]]){
+  const t=new HandTracking(),hand=lift=>({...observation(offset,lift,label),confidence:.98});
+  for(let now=0;now<=240;now+=40)t.update([hand(0)],now);
+  assert.equal(t.update([hand(.025)],280).shots[0]?.hand,side);
+ }
+});
+test('high-confidence label flips cannot steal an already tracked single hand',()=>{
+ const t=new HandTracking();
+ for(let now=0;now<=240;now+=40)t.update([{...observation(.15,0,'Right'),confidence:.98}],now);
+ const result=t.update([{...observation(.15,.05,'Left'),confidence:.98}],280);
+ assert.equal(result.shots[0]?.hand,'left');assert.equal(t.slots.right.visible,false);
+});
+test('independent anatomical hands keep ownership as detection order changes',()=>{
+ const t=new HandTracking(),left=lift=>({...observation(-.2,lift,'Right'),confidence:.98}),right=lift=>({...observation(.2,lift,'Left'),confidence:.98});
+ for(let now=0;now<=240;now+=40)t.update(now%80?[left(0),right(0)]:[right(0),left(0)],now);
+ assert.deepEqual(t.update([right(.04),left(.04)],280).shots.map(s=>s.hand),['left','right']);
 });

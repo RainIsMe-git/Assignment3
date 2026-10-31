@@ -105,8 +105,8 @@ test('five hits end a round; post-game shots cannot change score',()=>{
   for(let i=0;i<5;i++){g.invulnerable=0;g.spawn(0,.9999);g.tick(.1);}
   assert.equal(g.hp,0);assert.equal(g.finished,true);assert.equal(g.won,false);assert.equal(g.shoot('left'),null);
 });
-test('surviving 75 seconds wins; replay resets all round state',()=>{
-  const g=new GardenGame();g.reset('survival');g.elapsed=74.99;assert.equal(g.tick(.02)[0].type,'finish');assert.equal(g.won,true);g.reset();assert.equal(g.score,0);assert.equal(g.hp,5);assert.equal(g.finished,false);assert.equal(g.mode,'practice');
+test('time alone does not win; replay resets wave and combat state',()=>{
+  const g=new GardenGame();g.reset('survival');g.elapsed=74.99;g.tick(.02);assert.equal(g.won,false);g.reset();assert.equal(g.score,0);assert.equal(g.hp,5);assert.equal(g.finished,false);assert.equal(g.mode,'practice');assert.equal(g.wave,0);
 });
 
 test('charge increases only on valid observations and caps at two seconds',()=>{

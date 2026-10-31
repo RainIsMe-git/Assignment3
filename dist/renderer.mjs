@@ -1,4 +1,4 @@
-import {clamp,projectPlant} from './core.mjs';
+import {clamp,projectPlant,chargeDamage} from './core.mjs';
 import {paintGarden} from './backdrop.mjs';
 import {perspectiveHandPaths,gunPlacement} from './hand-art.mjs';
 import {shotStyle} from './combat-feedback.mjs';
@@ -163,11 +163,26 @@ export class GardenRenderer {
         if(hand.visible && hand.charge>.025){
           const q=hand.charge,full=q>=.999,mx=gun.muzzle.x*w,my=gun.muzzle.y*h;
           const pulse=this.reducedMotion?0:Math.sin(this.t*5)*1.5;
-          const r=(5+q*10+(full?pulse:0))*Math.min(1,gun.scale),glow=full?'#efc34d':color;
+          const r=(7+q*13+(full?pulse:0))*Math.min(1,gun.scale),style=shotStyle(chargeDamage(q)),glow=style.color;
           c.save();c.translate(mx,my);
-          const halo=c.createRadialGradient(0,0,2,0,0,r*2.4);halo.addColorStop(0,full?'#fff2aa9a':color+'88');halo.addColorStop(1,glow+'00');c.fillStyle=halo;c.beginPath();c.arc(0,0,r*2.4,0,Math.PI*2);c.fill();
+          const halo=c.createRadialGradient(0,0,2,0,0,r*2.8);halo.addColorStop(0,style.light+'dd');halo.addColorStop(.32,glow+'88');halo.addColorStop(1,glow+'00');c.fillStyle=halo;c.beginPath();c.arc(0,0,r*2.8,0,Math.PI*2);c.fill();
+          // Inked energy flecks spiral inward instead of a barely visible halo.
+          const count=6+Math.floor(q*10),clock=this.reducedMotion?0:this.t;
+          for(let i=0;i<count;i++){
+            const phase=(clock*(.8+q*.6)+i/count)%1,angle=i*2.399+clock*(full?2.4:1.3);
+            const distance=r+8+(1-phase)*(16+q*25),x=Math.cos(angle)*distance,y=Math.sin(angle)*distance*.75;
+            c.save();c.translate(x,y);c.rotate(angle);c.globalAlpha=.3+phase*.7;
+            this.path('M-5 0 L0 -2 L5 0 L0 2Z',style.light,glow,1.4);c.restore();
+          }
+          for(let orbit=0;orbit<2;orbit++){
+            c.save();c.rotate(clock*(orbit?-.9:1.2)+orbit*1.3);c.strokeStyle=glow;c.lineWidth=2+q;c.beginPath();c.ellipse(0,0,r+12+orbit*7,(r+12)*.5,0,.25,Math.PI*1.85);c.stroke();c.restore();
+          }
+          if(q>.5){
+            const rays=full?6:3;c.strokeStyle=style.light;c.lineWidth=2.2;
+            for(let i=0;i<rays;i++){const a=i*Math.PI*2/rays+clock*.7,reach=r+15+(full?8:0);c.save();c.rotate(a);this.path(`M${r+2} 0 l6 -4 l-2 7 L${reach} 0`,null,glow,3);c.restore();}
+          }
           c.strokeStyle=glow;c.lineWidth=3;c.beginPath();c.arc(0,0,r+7,-Math.PI/2,-Math.PI/2+q*Math.PI*2);c.stroke();
-          this.ellipse(0,0,2+q*3,2+q*3,full?'#fff1b0':'#fff4db',glow,1.5);
+          this.ellipse(0,0,3+q*5,3+q*5,style.light,glow,2);
           for(let i=0;i<3;i++){const angle=i*Math.PI*2/3+(this.reducedMotion?0:this.t*1.8);this.ellipse(Math.cos(angle)*(r+7),Math.sin(angle)*(r+7),2+q*2,2+q*2,CREAM,glow,1);}
           if(full){c.rotate(this.reducedMotion?0:this.t*.4);this.path('M-4 -32 L0 -39 L4 -32 M29 3 L36 0 L29 -3',null,'#fff1b0',2.5);}
           c.restore();

@@ -68,4 +68,5 @@ export class GameAudio {
     this.note(event.killed?180:280-event.damage*35,.055+event.damage*.018,.08+event.damage*.025,this.ctx.currentTime+style.flight,pan*.4);
   }
   hurt(){if(this.audible)this.note(90,.07,.2,this.ctx.currentTime);}
+  wave(){if(this.audible)for(const [i,hz] of [392,523,784].entries())this.note(hz,.055,.22,this.ctx.currentTime+i*.12);}
 }

@@ -23,7 +23,7 @@ Use Chrome or Edge on a desktop. The interface follows the browser language (Chi
 1. Enter mouse practice. It has no time limit or health penalty. Wait about two seconds: both fingertips and charge meters reach full charge.
 2. Press A or left-click for the left gun; D or right-click for the right. Space fires both. Any living target is hit automatically. Compare a quick follow-up shot with a fully charged one: damage increases from 1 to 2 to 3, with distinct projectile, impact and sound feedback.
 3. Press Esc. The game and audio stop; Resume continues. The home button resets the session. The speaker button mutes music and effects together.
-4. Try Defend: survive 75 seconds with five hearts. Plants move closer, hits push them back, and the result screen offers another game.
+4. Try Defend: complete five waves with five hearts. Waves contain 5, 8, 11, 14 and 18 plants, arriving in groups with a 3.5-second intermission between waves. The HUD shows the wave and remaining enemies. Plants move closer, hits push them back, and the result screen offers another game.
 5. For the camera, point an index finger naturally toward the lens, hold briefly, then lift it and lower it to re-arm. The other fingers do not need a precise pose. Move both hands away: after a short grace period play pauses, while the camera preview remains clear. Bring a steady hand back to continue. Denied permission or an unavailable model provides Retry and mouse fallback.
 
 ## One input-to-response code path
@@ -36,6 +36,7 @@ Use Chrome or Edge on a desktop. The interface follows the browser language (Chi
 
 - [README](../README.md): controls, setup, dependencies, limitations and current screenshots.
 - [PROCESS](../PROCESS.md): starting idea, successive decisions, first-trial feedback and AI disclosure. The submitter reported insensitive gestures and insufficient sound/feedback; these drove the changes. Details not supplied about the participant's first unprompted actions remain unspecified. No second-trial success claim is made.
+- [Player feedback](../PLAYER_FEEDBACK.md): ongoing player reports, resulting changes and verification status, starting with the hand-mapping / rapid-fire / wave update.
 - [CREDITS](../CREDITS.md): MediaPipe, visual references and the four user-supplied audio recordings.
 - `npm test`: deterministic rule, tracking, bilingual, geometry and audio lifecycle checks. These do not measure real webcam accuracy.
 - [Public development history](https://github.com/RainIsMe-git/Assignment3/commits/main/): the project was revised through commits rather than supplied as an unchanged tutorial.

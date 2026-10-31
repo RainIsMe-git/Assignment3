@@ -21,7 +21,7 @@ export class HandCamera {
     try {
       if (!window.isSecureContext || !navigator.mediaDevices?.getUserMedia) throw new Error('cameraSecure');
       onStatus('cameraPermission');
-      const pending = navigator.mediaDevices.getUserMedia({ audio: false, video: { width: {ideal:640}, height: {ideal:480}, facingMode:'user', frameRate:{ideal:24,max:30} } });
+      const pending = navigator.mediaDevices.getUserMedia({ audio: false, video: { width: {ideal:640}, height: {ideal:480}, facingMode:'user', frameRate:{ideal:60,max:60} } });
       pending.then(stream => { if (!current()) stream.getTracks().forEach(t=>t.stop()); }, () => {});
       const stream = await timeout(pending, 30000, 'cameraTimeout');
       if (!current()) { stream.getTracks().forEach(t=>t.stop()); return false; }
@@ -58,7 +58,7 @@ export class HandCamera {
           this.worker.postMessage({frame,timestamp:performance.now()},[frame]);
         } catch { fail('frameFailed'); }
         finally {capturing=false;}
-      },65);
+      },16);
       return true;
     } catch(error) {
       if (!current()) return false;
@@ -77,7 +77,7 @@ export class HandCamera {
     c.clearRect(0,0,w,h);
     for(const hand of hands){
     const points=hand.landmarks;if(points.length!==21)continue;
-    c.strokeStyle=hand.handedness==='Left'?'#94e5d7':'#ffba83';c.lineWidth=1.5;
+    c.strokeStyle=hand.handedness==='Right'?'#94e5d7':'#ffba83';c.lineWidth=1.5;
     for(const [a,b] of edges){c.beginPath();c.moveTo(points[a].x*w,points[a].y*h);c.lineTo(points[b].x*w,points[b].y*h);c.stroke();}
     c.fillStyle='#fff1cb';for(const p of points){c.beginPath();c.arc(p.x*w,p.y*h,2,0,Math.PI*2);c.fill();}
     }
