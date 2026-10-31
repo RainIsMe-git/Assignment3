@@ -2,6 +2,7 @@ import {clamp,projectPlant,chargeDamage} from './core.mjs';
 import {paintGarden} from './backdrop.mjs';
 import {perspectiveHandPaths,gunPlacement} from './hand-art.mjs';
 import {shotStyle} from './combat-feedback.mjs';
+import {HAND_COLORS} from './hand-identity.mjs';
 const INK='#29242b', CREAM='#fff2d9', GREEN='#4f8a3c';
 export class GardenRenderer {
   constructor(canvas){
@@ -45,11 +46,12 @@ export class GardenRenderer {
     this.leaf(-10,44,-.45,.8);this.leaf(8,42,2.8,.8);
     for(const sign of [-1,1]){c.save();c.translate(sign*68,35+sign*sway*4);this.ellipse(0,0,13,15,CREAM,INK,3);this.path('M-5 -6 v9 M1 -8 v9 M7 -5 v7',null,INK,1.5);c.restore();}
     c.save();c.translate(sway*2,-18+Math.sin(time*5+seed)*2);
-    const color=flash>0?'#fff6d3':type===0?'#efc541':type===1?'#c64f3a':'#679c59';
-    if(type===0){
-      for(let i=0;i<9;i++){c.save();c.rotate(i*Math.PI*2/9+Math.sin(time)*.025);c.scale(1,1+Math.sin(i*4)*.1);this.path('M-14 -30 Q-39 -60 -18 -93 Q-3 -105 10 -83 Q33 -64 18 -35Z',i%2?'#e77b27':'#f79c35',INK,3);c.restore();}
+    const color=flash>0?'#fff6d3':type===3?'#c8aa74':type===0?'#efc541':type===1?'#c64f3a':'#679c59';
+    if(type===0||type===3){
+      for(let i=0;i<9;i++){c.save();c.rotate(i*Math.PI*2/9+Math.sin(time)*.025);c.scale(1,1+Math.sin(i*4)*.1);this.path('M-14 -30 Q-39 -60 -18 -93 Q-3 -105 10 -83 Q33 -64 18 -35Z',type===3?(i%2?'#784b85':'#b36b97'):(i%2?'#e77b27':'#f79c35'),INK,3);if(type===3)this.path('M-19 -66 L-32 -84 L-13 -77 M13 -62 L29 -77 L12 -73',null,'#f0c99b',2);c.restore();}
       this.ellipse(0,0,45,47,color,INK,4);
       this.path('M-34 -19 Q-44 3 -27 25',null,'#f6d785',4);
+      if(type===3){this.path('M-30 -45 L-41 -80 L-13 -66 L0 -95 L16 -65 L41 -82 L30 -44Z','#e3b553',INK,3);this.ellipse(0,-65,6,8,'#b94750',INK,2);}
     }else if(type===1){
       this.path('M-36 10 Q-44 -34 -28 -50 Q0 -70 28 -50 Q44 -34 36 10 Q41 52 0 57 Q-39 52 -36 10Z','#e1cf96',INK,4);
       this.path('M-65 -13 Q-60 -80 -10 -83 Q51 -95 67 -14 Q26 3 -65 -13Z',color,INK,4);
@@ -75,6 +77,18 @@ export class GardenRenderer {
   glove(x,y,scale,angle,side,color,alpha=1){
     const c=this.c;c.save();c.globalAlpha=alpha;c.translate(x,y);c.rotate(angle);c.scale(scale*(side==='left'?1:-1),scale);
     for(const [path,fill,width,stroke] of perspectiveHandPaths(color))this.path(path,fill,width?stroke||INK:null,width);
+    c.restore();
+  }
+  stopGlove(side,color,powered){
+    const c=this.c,scale=Math.min(this.w/850,this.h/530),x=this.w*(side==='left'?.24:.76),y=this.h*.86;
+    c.save();c.translate(x,y);c.scale(scale*(side==='left'?1:-1),scale);c.rotate(side==='left'?-.08:.08);
+    this.path('M-39 59 L-72 142 L57 149 L45 60Z','#343039',INK,4);
+    this.path('M-41 56 L-46 78 Q0 99 49 77 L43 55Z',color,INK,4);
+    this.path('M-40 59 C-53 42 -57 23 -66 8 L-85 -21 C-92 -36 -79 -47 -67 -37 L-44 -9 L-49 -83 C-50 -104 -30 -112 -25 -89 L-18 -41 L-17 -111 C-17 -134 5 -135 8 -112 L11 -44 L17 -101 C20 -123 41 -118 40 -96 L36 -35 L45 -76 C50 -93 69 -87 64 -67 L58 -9 C56 22 54 43 39 61 Q0 80 -40 59Z','#fff1d9',INK,4);
+    this.path('M-36 45 Q4 61 42 42 Q42 61 14 67 Q-19 68 -36 54Z','#d7c6b0',null,0);
+    this.path('M-28 2 Q-9 -8 13 -3 M-24 15 Q-5 6 17 9 M-17 29 Q1 21 20 24',null,'#998474',2.5);
+    this.path('M-42 57 Q0 76 43 55 L45 68 Q0 89 -45 70Z','#fff1d9',INK,3);
+    if(powered){c.strokeStyle=powered===2?'#b38aca':'#77d1c6';c.lineWidth=3;for(let i=0;i<2;i++){c.beginPath();c.ellipse(0,-8,69+i*13,53+i*12,0,0,Math.PI*2);c.stroke();}}
     c.restore();
   }
   shot(event,hand){
@@ -137,6 +151,10 @@ export class GardenRenderer {
       this.plant(w*(narrow?.36:.57),h*(narrow?.88:.72),Math.min(h*.12,w*.075),1,this.t,0,3);
       this.plant(w*.91,h*(narrow?.91:.77),Math.min(h*.135,w*.08),2,this.t,0,5);
     }else{
+      if(game.palm?.active){
+        const power=game.palm.active,c0=power===2?'#ae88c4':'#6fc4bd';c.save();c.strokeStyle=c0;c.lineWidth=power===2?5:3;
+        for(let i=0;i<4;i++){const phase=((this.reducedMotion?0:this.t*.65)+i/4)%1;c.globalAlpha=(1-phase)*.30;c.beginPath();c.ellipse(w*.5,h*(.85-phase*.43),w*(.14+phase*.43),h*(.04+phase*.03),0,0,Math.PI*2);c.stroke();}c.restore();
+      }
       // Keep the pre-hit cel visible until the bullet arrives. Game rules stay
       // immediate and deterministic; only the presentation is delayed.
       const pending=new Map();
@@ -144,10 +162,12 @@ export class GardenRenderer {
       const plants=[...game.plants.filter(p=>!pending.has(p.id)),...pending.values()];
       for(const plant of plants.sort((a,b)=>a.depth-b.depth)){
         const p=projectPlant(plant),impact=this.effects.some(f=>f.targetId===plant.id&&f.life>=shotStyle(f.damage).flight&&f.life<shotStyle(f.damage).flight+.13);this.plant(p.x*w,p.y*h,p.size*h*.65,plant.type,this.t,impact?.15:pending.has(plant.id)?0:plant.flash,plant.seed);
-        for(let i=0;i<plant.maxHp;i++)this.ellipse(p.x*w+(i-(plant.maxHp-1)/2)*9,p.y*h-p.size*h*.79,2.7,2.7,i<plant.hp?CREAM:'#54482c55',INK,1);
+        if(!plant.boss)for(let i=0;i<plant.maxHp;i++)this.ellipse(p.x*w+(i-(plant.maxHp-1)/2)*9,p.y*h-p.size*h*.79,2.7,2.7,i<plant.hp?CREAM:'#54482c55',INK,1);
+        if(game.palm?.active)this.ellipse(p.x*w,p.y*h+p.size*h*.65,p.size*h*.5,8,null,game.palm.active===2?'#ae88c4':'#65c6bb',2.5);
       }
       for(const side of ['left','right']){
-        const hand=hands[side],color=side==='left'?'#367f7d':'#bd513c';
+        const hand=hands[side],color=HAND_COLORS[side];
+        if(hand.stopping){this.stopGlove(side,color,game.palm?.active||0);continue;}
         const idle=this.reducedMotion?0:Math.sin(this.t*2.2+(side==='left'?0:1.6))*2;
         const gun=gunPlacement(side,hand.aim,w,h,this.reducedMotion?0:this.recoil[side],idle);
         const ax=hand.aim.x*w,ay=hand.aim.y*h;

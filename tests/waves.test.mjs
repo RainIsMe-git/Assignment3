@@ -22,7 +22,7 @@ test('fast jitter, a held raised finger and cooldown do not become rapid fire',(
 });
 test('waves contain exact growing groups, a frozen pause and a real intermission',()=>{
  const g=new GardenGame(()=>.5);g.reset('survival');
- assert.equal(g.plants.length,5);assert.equal(g.wave,1);
+ assert.equal(g.plants.length,6);assert.equal(g.wave,1);
  const seen=[];
  for(let wave=1;wave<=5;wave++){
   let defeated=0;

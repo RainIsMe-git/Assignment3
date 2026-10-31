@@ -1,4 +1,5 @@
 const edges = [[0,1],[1,2],[2,3],[3,4],[0,5],[5,6],[6,7],[7,8],[5,9],[9,10],[10,11],[11,12],[9,13],[13,14],[14,15],[15,16],[13,17],[0,17],[17,18],[18,19],[19,20]];
+import {HAND_COLORS} from './hand-identity.mjs';
 const timeout = (promise, ms, message) => {
   let timer;
   return Promise.race([promise, new Promise((_, reject) => { timer = setTimeout(() => reject(new Error(message)), ms); })]).finally(() => clearTimeout(timer));
@@ -46,7 +47,7 @@ export class HandCamera {
         if(!current())return;
         busy=false;
         if(event.data.type==='error'){fail(event.data.message);return;}
-        if(event.data.type==='result'){this.draw(event.data.hands || []);onResult(event.data);}
+        if(event.data.type==='result')onResult(event.data);
       };
       this.timer=setInterval(async()=>{
         if(!current()||busy||capturing||this.video.readyState<2||lastTime===this.video.currentTime||document.hidden)return;
@@ -76,10 +77,12 @@ export class HandCamera {
     const c=this.canvas.getContext('2d'),w=this.canvas.width,h=this.canvas.height;
     c.clearRect(0,0,w,h);
     for(const hand of hands){
-    const points=hand.landmarks;if(points.length!==21)continue;
-    c.strokeStyle=hand.handedness==='Right'?'#94e5d7':'#ffba83';c.lineWidth=1.5;
+    const points=hand.landmarks;if(points.length!==21||!HAND_COLORS[hand.side])continue;
+    c.strokeStyle=HAND_COLORS[hand.side];c.lineWidth=2.5;
     for(const [a,b] of edges){c.beginPath();c.moveTo(points[a].x*w,points[a].y*h);c.lineTo(points[b].x*w,points[b].y*h);c.stroke();}
     c.fillStyle='#fff1cb';for(const p of points){c.beginPath();c.arc(p.x*w,p.y*h,2,0,Math.PI*2);c.fill();}
+    c.save();c.translate(Math.max(13,Math.min(w-13,points[0].x*w)),Math.max(15,Math.min(h-9,points[0].y*h+14)));c.scale(-1,1);
+    c.fillStyle=HAND_COLORS[hand.side];c.fillRect(-11,-12,22,20);c.fillStyle='#fff1cb';c.font='bold 16px sans-serif';c.textAlign='center';c.fillText(hand.side==='left'?'L':'R',0,4);c.restore();
     }
   }
 }

@@ -8,7 +8,7 @@
 - **实现参考：** [Google Web Gesture Recognizer 文档](https://ai.google.dev/edge/mediapipe/solutions/vision/gesture_recognizer/web_js) 用于双手配置、handedness、21 个关键点及 worker 推理。指枪抬指检测和游戏规则为项目代码。
 - **模型分发：** jsDelivr 与 Google Cloud Storage。视频帧不发送给这些服务。
 - **三维识别参考：** [MediaPipe 手部关键点说明](https://developers.google.com/edge/mediapipe/solutions/vision/hand_landmarker/web_js)，用于区分图像归一化坐标和以米为单位的世界坐标、修正宽高比并处理指尖朝镜头的透视缩短。
-- **左右手映射参考：** [MediaPipe 官方 Hands 文档中的 handedness 说明](https://github.com/google-ai-edge/mediapipe/blob/master/docs/solutions/hands.md)：标签以镜像输入为前提，非镜像输入需交换。本项目传入原始视频帧、仅在预览层镜像，因此修正初次手部身份，再以连续位置跟踪防止标签偶发翻转。
+- **左右手映射修订：** 上一轮参考了 [旧版 MediaPipe Hands 文档](https://github.com/google-ai-edge/mediapipe/blob/master/docs/solutions/hands.md) 的镜像标签说明并额外交换左右；玩家截图反馈表明该假设不适用于本项目当前 Tasks Vision 输入路径。本轮撤销额外交换，预览和开枪共用最终跟踪身份，并以连续位置匹配降低标签偶发翻转的影响。合成检查只验证程序对应关系，实际摄像头仍待玩家复测。
 - **字体：** 本机系统字体，无远程字体。
 - **背景音乐：** 用户提供的 `ES_Well I Just Don't Care - Stationary Sign.wav`（Stationary Sign / Epidemic Sound），转换为 `garden-jazz.mp3`，保留完整曲目并处理两端淡入淡出。
 - **射击录音：** 用户提供的 Epidemic Sound 文件：`ES_Lasers, Gun, Fire, Shoot, Discharge, Singular`、`ES_Lasers, Gun, Plasma Blaster, Shoot, Fire, Single Rounds, Dull`、`ES_Lasers, Gun, Fire, Shoot, Powerful, Exhaust, Steam, Scifi, Variations`（原文件均为 `.wav`，后缀为 ` - Epidemic Sound`）。分别截取为轻、中、重枪声；蓄力循环从 Powerful 录音中截取、倒放并滤波，随蓄力改变音高与音量。来源署名不代表授予这些第三方录音新的许可。
