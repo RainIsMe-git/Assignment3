@@ -1,6 +1,6 @@
 # Credits
 
-- **方向与反馈：** 用户提出第一人称双指枪、抬指射击、宽容辅助瞄准、变异植物敌人和复古漫画美术方向。
+- **方向与反馈：** 用户提出第一人称双指枪、抬指射击、自动锁定必中、蓄力伤害、中英文界面、变异植物敌人和复古漫画美术方向。
 - **美术参考：** 用户提供的《茶杯头》（Cuphead，Studio MDHR）截图与 1930 年代美式橡皮管动画。本项目未复制其截图、角色、音乐或素材；所有花园、植物、手套、图标与粒子均由本项目 Canvas / SVG 代码绘制。
 - **AI 协助：** OpenAI Codex 协助规则设计、编程、原创程序化图形、测试及文档。见 PROCESS.md。
 - **识别库：** Google MediaPipe Tasks Vision 0.10.14，[官方仓库](https://github.com/google-ai-edge/mediapipe)，[Apache License 2.0](https://github.com/google-ai-edge/mediapipe/blob/master/LICENSE)。

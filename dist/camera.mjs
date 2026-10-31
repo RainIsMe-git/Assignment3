@@ -19,29 +19,29 @@ export class HandCamera {
     const session = this.session;
     const current = () => session === this.session;
     try {
-      if (!window.isSecureContext || !navigator.mediaDevices?.getUserMedia) throw new Error('摄像头需要 HTTPS 或 localhost。请在普通浏览器标签页打开游戏；也可以先用鼠标模式体验。');
-      onStatus('请在浏览器提示中允许摄像头…');
+      if (!window.isSecureContext || !navigator.mediaDevices?.getUserMedia) throw new Error('cameraSecure');
+      onStatus('cameraPermission');
       const pending = navigator.mediaDevices.getUserMedia({ audio: false, video: { width: {ideal:640}, height: {ideal:480}, facingMode:'user', frameRate:{ideal:24,max:30} } });
       pending.then(stream => { if (!current()) stream.getTracks().forEach(t=>t.stop()); }, () => {});
-      const stream = await timeout(pending, 30000, '等待摄像头授权超时。请确认浏览器权限后重试。');
+      const stream = await timeout(pending, 30000, 'cameraTimeout');
       if (!current()) { stream.getTracks().forEach(t=>t.stop()); return false; }
       this.stream = stream; this.video.srcObject = stream;
-      stream.getVideoTracks()[0].addEventListener('ended', () => { if(current()) { this.stop(); onFault('摄像头连接已断开，请重新连接。'); } }, {once:true});
-      await timeout(this.video.play(), 10000, '摄像头画面无法播放，请重新连接。');
+      stream.getVideoTracks()[0].addEventListener('ended', () => { if(current()) { this.stop(); onFault('cameraDisconnected'); } }, {once:true});
+      await timeout(this.video.play(), 10000, 'cameraPlayback');
       if (!current()) return false;
-      onStatus('正在加载手势模型，首次可能需要约半分钟…');
+      onStatus('modelLoading');
       this.worker = new Worker(new URL('./gesture-worker.mjs', import.meta.url));
       let busy = false, lastTime = -1, capturing = false;
       await timeout(new Promise((resolve,reject) => {
-        this.worker.onerror = () => reject(new Error('识别库加载失败，请检查网络后重试。'));
+        this.worker.onerror = () => reject(new Error('modelLoadFailed'));
         this.worker.onmessage = e => {
           if (e.data.type === 'ready') resolve();
           if (e.data.type === 'error') reject(new Error(e.data.message));
         };
-      }), 45000, '手势模型加载超时。请检查网络后重试，或用鼠标模式体验。');
+      }), 45000, 'modelTimeout');
       if (!current()) return false;
       const fail = message => { if(current()) { this.stop(); onFault(message); } };
-      this.worker.onerror = () => fail('手势识别进程已停止，请重新连接。');
+      this.worker.onerror = () => fail('trackingStopped');
       this.worker.onmessage = event => {
         if(!current())return;
         busy=false;
@@ -56,20 +56,20 @@ export class HandCamera {
           if(!current()){frame.close();return;}
           busy=true;lastTime=videoTime;
           this.worker.postMessage({frame,timestamp:performance.now()},[frame]);
-        } catch { fail('无法读取摄像头画面，请重试或换用鼠标模式。'); }
+        } catch { fail('frameFailed'); }
         finally {capturing=false;}
-      },80);
+      },65);
       return true;
     } catch(error) {
       if (!current()) return false;
       this.stop();
       const messages = {
-        NotAllowedError:'摄像头权限被拒绝。请在浏览器地址栏的权限设置中允许摄像头，再点击重新连接。',
-        NotFoundError:'没有找到摄像头。请连接摄像头，或使用鼠标模式体验。',
-        NotReadableError:'摄像头无法读取，可能正被其他应用占用。关闭占用它的应用后重试。',
-        SecurityError:'浏览器阻止了摄像头。请在独立的 HTTPS 或 localhost 标签页打开。'
+        NotAllowedError:'cameraDenied',
+        NotFoundError:'cameraNotFound',
+        NotReadableError:'cameraBusy',
+        SecurityError:'cameraBlocked'
       };
-      throw new Error(messages[error.name] || error.message || '摄像头连接失败，请重试。');
+      throw new Error(messages[error.name] || error.message || 'cameraFailed');
     }
   }
   draw(hands) {

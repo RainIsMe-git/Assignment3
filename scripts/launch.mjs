@@ -29,13 +29,13 @@ export function openInBrowser(url) {
   child.unref();
 }
 
-export async function launch({ ports = Array.from({ length: 10 }, (_, i) => 4173 + i), openBrowser = true } = {}) {
+export async function launch({ ports = [...Array.from({ length: 10 }, (_, i) => 4173 + i), 0], openBrowser = true } = {}) {
   for (const port of ports) {
     let server;
     try { server = await startServer(port); }
     catch (error) {
-      if (error.code !== 'EADDRINUSE') throw error;
-      if (await existingGame(port)) {
+      if (port === 0 || !['EADDRINUSE', 'EACCES'].includes(error.code)) throw error;
+      if (error.code === 'EADDRINUSE' && await existingGame(port)) {
         const url = `http://127.0.0.1:${port}`;
         console.log(`Garden Gunners is already running. Opening ${url}`);
         if (openBrowser) openInBrowser(url);
@@ -50,7 +50,7 @@ export async function launch({ ports = Array.from({ length: 10 }, (_, i) => 4173
     if (openBrowser) openInBrowser(url);
     return { reused: false, server, url };
   }
-  throw new Error('Ports 4173-4182 are occupied. Close an earlier game/server window and try again.');
+  throw new Error('None of the requested ports are available. Run the launcher without a fixed port to select a free one.');
 }
 
 if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {

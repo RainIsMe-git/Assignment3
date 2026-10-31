@@ -13,14 +13,14 @@ try {
     },
     runningMode: 'VIDEO',
     numHands: 2,
-    minHandDetectionConfidence: 0.6,
-    minHandPresenceConfidence: 0.6,
-    minTrackingConfidence: 0.6
+    minHandDetectionConfidence: 0.45,
+    minHandPresenceConfidence: 0.45,
+    minTrackingConfidence: 0.45
   });
   self.postMessage({ type: 'ready' });
 } catch (error) {
   console.error('Gesture model initialization failed:', error?.message || error);
-  self.postMessage({ type: 'error', message: '无法加载手势识别模型，请检查网络后重试。' });
+  self.postMessage({ type: 'error', message: 'modelLoadFailed' });
 }
 
 self.onmessage = event => {
@@ -35,7 +35,7 @@ self.onmessage = event => {
       confidence: result.handedness[i]?.[0]?.score || 0
     })) });
   } catch (error) {
-    self.postMessage({ type: 'error', message: '手势识别已中断。请重新连接摄像头，或使用鼠标模式。' });
+    self.postMessage({ type: 'error', message: 'trackingStopped' });
   } finally { frame.close(); }
 };
 })();

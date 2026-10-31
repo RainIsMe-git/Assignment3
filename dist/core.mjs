@@ -15,36 +15,46 @@ export function readGunPose(points) {
   const index = extended(5,6,7,8), middle = extended(9,10,11,12);
   const gun = thumb && index && (middle || curled(9,10,11,12)) && curled(13,14,15,16) && curled(17,18,19,20);
   const palm=[0,5,9,13,17].map(i=>points[i]);
-  return {gun, variant:middle?'three':'two', lift:(points[5].y-points[8].y)/scale,
+  const relaxedGun=straight(1,2,3,4)>.68 && distance(points[4],points[2])>scale*.27 && distance(points[4],points[5])>scale*.30 && straight(5,6,7,8)>.72 && distance(points[8],points[5])>scale*.38 && curled(13,14,15,16) && curled(17,18,19,20);
+  return {gun, relaxedGun, variant:middle?'three':'two', lift:(points[5].y-points[8].y)/scale,
     aim:{x:clamp((1-palm.reduce((s,p)=>s+p.x,0)/5-.14)/.72,.06,.94),y:clamp((palm.reduce((s,p)=>s+p.y,0)/5-.18)/.67,.22,.78)}};
 }
 
 // Relative upward flick, not an absolute pose. Translating the entire hand
 // leaves lift unchanged. Holding the raised finger never creates extra shots.
+export const CHARGE_MS=2000, TRACKING_GRACE_MS=750;
+export const chargeDamage=charge=>1+Math.floor(clamp(charge)*2+.000001);
 export class GunTrigger {
   constructor(){this.reset();}
-  reset(){this.base=null;this.since=0;this.last=0;this.ready=false;this.latched=false;this.cooldownUntil=0;this.aim=null;this.variant=null;}
+  reset(){this.base=null;this.since=0;this.last=null;this.ready=false;this.latched=false;this.cooldownUntil=0;this.variant=null;this.chargeMs=0;this.interrupted=false;}
+  get charge(){return clamp(this.chargeMs/CHARGE_MS);}
+  miss(time){
+    this.interrupted=true;
+    if(this.last!==null && time-this.last>TRACKING_GRACE_MS)this.reset();
+  }
   sample(pose,time){
-    if(!pose?.gun){this.reset();return null;}
-    if(this.last && time-this.last>350)this.reset();
+    if(!pose?.gun){this.miss(time);return null;}
+    const gap=this.last===null?0:time-this.last;
+    if(gap>TRACKING_GRACE_MS)this.reset();
     const variant=pose.variant||'two';
-    if(this.variant && this.variant!==variant)this.reset();
-    this.variant=variant;
-    this.last=time;
-    if(this.base===null){this.base=pose.lift;this.since=time;this.aim={...pose.aim};return null;}
+    const reacquired=this.interrupted||gap>220||(this.variant&&this.variant!==variant);
+    this.interrupted=false;this.variant=variant;this.last=time;
+    if(this.base===null){this.base=pose.lift;this.since=time;return null;}
+    // Never infer a flick from motion that happened during an occlusion.
+    if(reacquired){if(!this.latched)this.base=pose.lift;this.ready=false;this.since=time;return null;}
     if(this.latched){
       if(pose.lift<this.base+.12 && time>=this.cooldownUntil){this.latched=false;this.ready=false;this.since=time;this.base=pose.lift;}
       return null;
     }
     if(!this.ready){
       if(Math.abs(pose.lift-this.base)>.18){this.base=pose.lift;this.since=time;}
-      this.ready=time-this.since>=120;
-      this.aim={...pose.aim};return null;
+      this.ready=time-this.since>=120;return null;
     }
+    this.chargeMs=Math.min(CHARGE_MS,this.chargeMs+Math.max(0,Math.min(gap,200)));
     if(pose.lift-this.base>.24 && time>=this.cooldownUntil){
-      const shot={...this.aim};this.latched=true;this.cooldownUntil=time+230;return shot;
+      const shot={charge:this.charge};this.chargeMs=0;this.latched=true;this.cooldownUntil=time+230;return shot;
     }
-    this.base=Math.min(this.base,pose.lift);this.aim={...pose.aim};return null;
+    this.base=Math.min(this.base,pose.lift);return null;
   }
 }
 
@@ -52,16 +62,16 @@ export function projectPlant(plant){
   const depth=clamp(plant.depth);
   return {x:.5+plant.lane*(.23+depth*.23),y:.45+depth*.24,size:.055+depth*.16};
 }
-export function assistedTarget(plants,aim){
-  let chosen=null,best=Infinity;
-  for(const plant of plants){
-    if(plant.hp<=0)continue;
-    const p=projectPlant(plant);
-    const d=Math.hypot((p.x-aim.x)/(.24+p.size*.35),(p.y-aim.y)/(.27+p.size*.3));
-    const rank=d-plant.depth*.12;
-    if(d<=1 && rank<best){best=rank;chosen=plant;}
-  }
-  return chosen;
+// Pick the most urgent enemies, then assign them in screen order. Physical hand
+// position and handedness labels never control aiming, so crossing is unnecessary.
+export function automaticTargets(plants,activeSides=['left','right']){
+  const live=plants.filter(p=>p.hp>0).sort((a,b)=>b.depth-a.depth||a.id-b.id);
+  const targets={left:null,right:null};
+  if(!live.length)return targets;
+  if(activeSides.length===1){targets[activeSides[0]]=live[0];return targets;}
+  if(activeSides.length===0)return targets;
+  const pair=live.slice(0,2).sort((a,b)=>projectPlant(a).x-projectPlant(b).x||a.id-b.id);
+  targets.left=pair[0];targets.right=pair[1]||pair[0];return targets;
 }
 export class GardenGame {
   constructor(random=Math.random){this.random=random;this.reset();}
@@ -71,22 +81,23 @@ export class GardenGame {
   get wave(){return Math.min(5,1+Math.floor(this.elapsed/15));}
   spawn(lane,depth=.03){
     const type=this.nextId%3;
-    this.plants.push({id:this.nextId++,lane:lane??(this.random()*1.76-.88),depth,type,hp:type===2?2:1,flash:0,seed:this.random()*6.28});
+    this.plants.push({id:this.nextId++,lane:lane??(this.random()*1.76-.88),depth,type,hp:[3,2,4][type],maxHp:[3,2,4][type],flash:0,seed:this.random()*6.28});
   }
   pause(reason){this.pauseReason=reason;}
   resume(){this.pauseReason='';}
-  shoot(aim,hand){
+  shoot(hand,charge=0,activeSides=['left','right']){
     if(this.finished||this.pauseReason)return null;
+    const target=automaticTargets(this.plants,activeSides)[hand]||automaticTargets(this.plants,[hand])[hand];
+    // No enemy means no spent shot/charge and no false miss in the statistics.
+    if(!target)return null;
+    const point=projectPlant(target),damage=chargeDamage(charge);
     this.shots++;
-    const target=assistedTarget(this.plants,aim);
-    if(!target){this.combo=0;return {hand,aim,hit:false};}
-    const point=projectPlant(target);
-    target.hp--;target.flash=.22;target.depth=Math.max(.02,target.depth-.12);
+    target.hp-=damage;target.flash=.22;target.depth=Math.max(.02,target.depth-.10-damage*.035);
     this.hits++;this.combo++;this.bestCombo=Math.max(this.bestCombo,this.combo);
     const killed=target.hp<=0,points=killed?100+Math.min(this.combo,10)*10:30;
     this.score+=points;if(killed)this.kills++;
     this.plants=this.plants.filter(p=>p.hp>0);
-    return {hand,aim:{x:point.x,y:point.y},hit:true,killed,points,type:target.type};
+    return {hand,aim:{x:point.x,y:point.y},targetId:target.id,charge:clamp(charge),damage,hit:true,killed,points,type:target.type};
   }
   tick(dt){
     if(this.finished||this.pauseReason)return [];

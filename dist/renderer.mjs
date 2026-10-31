@@ -1,6 +1,6 @@
-import {clamp,projectPlant,assistedTarget} from './core.mjs';
+import {clamp,projectPlant} from './core.mjs';
 import {paintGarden} from './backdrop.mjs';
-import {handPaths,gunPlacement,FINGERTIP} from './hand-art.mjs';
+import {handPaths,gunPlacement} from './hand-art.mjs';
 const INK='#29242b', CREAM='#fff2d9', GREEN='#4f8a3c';
 export class GardenRenderer {
   constructor(canvas){
@@ -78,8 +78,8 @@ export class GardenRenderer {
   }
   shot(event,hand){
     const gun=gunPlacement(event.hand,hand.aim,this.w,this.h);
-    this.recoil[event.hand]=1;this.effects.push({...event,aim:{...event.aim},origin:gun.muzzle,bearing:gun.bearing,life:0,duration:.48});
-    if(event.hit){for(let i=0;i<10;i++)this.effects.push({particle:true,x:event.aim.x,y:event.aim.y,vx:(Math.random()-.5)*.35,vy:(Math.random()-.65)*.4,life:0,duration:.65,color:['#e6b64a','#ebdda9','#6d934c'][i%3]});}
+    this.recoil[event.hand]=1+event.charge*.35;this.effects.push({...event,aim:{...event.aim},origin:gun.muzzle,bearing:gun.bearing,life:0,duration:.48});
+    if(event.hit){for(let i=0;i<10+event.damage*4;i++)this.effects.push({particle:true,x:event.aim.x,y:event.aim.y,vx:(Math.random()-.5)*.35,vy:(Math.random()-.65)*.4,life:0,duration:.65,color:['#e6b64a','#ebdda9','#6d934c'][i%3]});}
   }
   clear(){this.effects=[];this.hurt=0;this.recoil={left:0,right:0};}
   update(dt,running){this.t+=dt;for(const k of ['left','right'])this.recoil[k]=Math.max(0,this.recoil[k]-dt*5);this.hurt=Math.max(0,this.hurt-dt*2);if(running)for(const fx of this.effects)fx.life+=dt;this.effects=this.effects.filter(e=>e.life<e.duration);}
@@ -95,36 +95,33 @@ export class GardenRenderer {
     }else{
       for(const plant of [...game.plants].sort((a,b)=>a.depth-b.depth)){
         const p=projectPlant(plant);this.plant(p.x*w,p.y*h,p.size*h*.65,plant.type,this.t,plant.flash,plant.seed);
-        if(plant.type===2){for(let i=0;i<plant.hp;i++)this.ellipse(p.x*w+(i-(plant.hp-1)/2)*10,p.y*h-p.size*h*.64,3,3,CREAM,INK,1.5);}
+        for(let i=0;i<plant.maxHp;i++)this.ellipse(p.x*w+(i-(plant.maxHp-1)/2)*9,p.y*h-p.size*h*.79,2.7,2.7,i<plant.hp?CREAM:'#54482c55',INK,1);
       }
       for(const side of ['left','right']){
         const hand=hands[side],color=side==='left'?'#367f7d':'#bd513c';
         const gun=gunPlacement(side,hand.aim,w,h,this.recoil[side]);
         const ax=hand.aim.x*w,ay=hand.aim.y*h;
-        if(hand.visible){
-          // A quiet sight line joins the actual fingertip to its aim marker.
-          const mx=gun.muzzle.x*w,my=gun.muzzle.y*h;
-          const guide=c.createLinearGradient(mx,my,ax,ay);
-          guide.addColorStop(0,color+'09');guide.addColorStop(1,color+'70');
-          c.save();c.strokeStyle=guide;c.lineWidth=1.5;c.setLineDash([3,9]);
-          c.beginPath();c.moveTo(mx,my);c.lineTo(ax,ay);c.stroke();c.restore();
-          const target=assistedTarget(game.plants,hand.aim);
-          // Open corner marks leave the plant visible; the centre is the aim point.
-          c.save();c.translate(ax,ay);c.strokeStyle=color;c.lineWidth=2.2;
-          const r=target?13:17;
-          for(let i=0;i<4;i++){c.rotate(Math.PI/2);c.beginPath();c.moveTo(-r,-r+6);c.lineTo(-r,-r);c.lineTo(-r+6,-r);c.stroke();}
-          this.ellipse(0,0,2.5,2.5,color,CREAM,1);c.restore();
-          // The little glove sits behind the marker and points along the same ray.
-          const small=w<650?.18:.24,offset=FINGERTIP*small+24;
-          this.glove(ax-Math.cos(gun.bearing)*offset,ay-Math.sin(gun.bearing)*offset,small,gun.angle,side,color,.9,hand.pose?.variant);
-          if(target){
-            const p=projectPlant(target),radius=Math.max(22,p.size*h*.49);
-            c.save();c.strokeStyle=color;c.lineWidth=2;c.globalAlpha=.75;
-            for(const angle of [-.3,Math.PI-.3]){c.beginPath();c.arc(p.x*w,p.y*h,radius,angle,angle+.7);c.stroke();}
-            c.restore();
-          }
+        if(hand.visible && hand.target){
+          const p=projectPlant(hand.target),ax=p.x*w,ay=p.y*h;
+          // Only a reticle over the enemy. Concentric arcs distinguish shared targets.
+          const radius=side==='left'?18:25;
+          c.save();c.translate(ax,ay);c.strokeStyle=color;c.lineWidth=2.5;
+          for(let i=0;i<4;i++){c.rotate(Math.PI/2);c.beginPath();c.arc(0,0,radius,-.3,.3);c.stroke();c.beginPath();c.moveTo(radius-3,0);c.lineTo(radius+5,0);c.stroke();}
+          this.ellipse(0,0,2,2,CREAM,color,1);c.restore();
         }
         this.glove(gun.x,gun.y,gun.scale,gun.angle,side,color,hand.visible?1:.24,hand.pose?.variant);
+        if(hand.visible && hand.charge>.025){
+          const q=hand.charge,full=q>=.999,mx=gun.muzzle.x*w,my=gun.muzzle.y*h;
+          const pulse=this.reducedMotion?0:Math.sin(this.t*5)*1.5;
+          const r=7+q*18+ (full?pulse:0),glow=full?'#efc34d':color;
+          c.save();c.translate(mx,my);
+          const halo=c.createRadialGradient(0,0,2,0,0,r*2.4);halo.addColorStop(0,full?'#fff2aa9a':color+'88');halo.addColorStop(1,glow+'00');c.fillStyle=halo;c.beginPath();c.arc(0,0,r*2.4,0,Math.PI*2);c.fill();
+          c.strokeStyle=glow;c.lineWidth=3;c.beginPath();c.arc(0,0,r+7,-Math.PI/2,-Math.PI/2+q*Math.PI*2);c.stroke();
+          this.ellipse(0,0,3+q*8,3+q*8,full?'#fff1b0':'#fff4db',glow,2);
+          for(let i=0;i<3;i++){const angle=i*Math.PI*2/3+(this.reducedMotion?0:this.t*1.8);this.ellipse(Math.cos(angle)*(r+7),Math.sin(angle)*(r+7),2+q*2,2+q*2,CREAM,glow,1);}
+          if(full){c.rotate(this.reducedMotion?0:this.t*.4);this.path('M-4 -32 L0 -39 L4 -32 M29 3 L36 0 L29 -3',null,'#fff1b0',2.5);}
+          c.restore();
+        }
       }
       for(const fx of this.effects){
         const t=fx.life/fx.duration;c.save();c.globalAlpha=1-t;
@@ -132,7 +129,7 @@ export class GardenRenderer {
         else{
           const origin={x:fx.origin.x*w,y:fx.origin.y*h};
           if(fx.life<.09){
-            c.save();c.translate(origin.x,origin.y);c.rotate(fx.bearing);
+            c.save();c.translate(origin.x,origin.y);c.rotate(fx.bearing);c.scale(1+fx.charge,1+fx.charge);
             this.path('M-5 0 L7 -8 L12 -3 L27 0 L12 4 L7 10Z','#fff2ac',INK,1.5);
             c.restore();
           }
@@ -143,16 +140,16 @@ export class GardenRenderer {
             // Assisted shots leave along the index, then curve gently to the plant.
             const point=u=>({x:(1-u)**2*origin.x+2*(1-u)*u*control.x+u*u*end.x,y:(1-u)**2*origin.y+2*(1-u)*u*control.y+u*u*end.y});
             const head=point(progress),back=point(tail);
-            c.lineWidth=5;c.strokeStyle=fx.hand==='left'?'#b7e5cc':'#fff0a6';c.beginPath();c.moveTo(back.x,back.y);
+            c.lineWidth=4+fx.charge*7;c.strokeStyle=fx.hand==='left'?'#b7e5cc':'#fff0a6';c.beginPath();c.moveTo(back.x,back.y);
             for(let i=1;i<=5;i++){const p=point(tail+(progress-tail)*i/5);c.lineTo(p.x,p.y);}c.stroke();
             const tangent={x:(1-progress)*(control.x-origin.x)+progress*(end.x-control.x),y:(1-progress)*(control.y-origin.y)+progress*(end.y-control.y)};
-            c.save();c.translate(head.x,head.y);c.rotate(Math.atan2(tangent.y,tangent.x));this.ellipse(0,0,13,6,fx.hand==='left'?'#b7e5cc':'#fff0a6',INK,2);c.restore();
+            c.save();c.translate(head.x,head.y);c.rotate(Math.atan2(tangent.y,tangent.x));this.ellipse(0,0,13+fx.charge*13,6+fx.charge*7,fx.hand==='left'?'#b7e5cc':'#fff0a6',INK,2);c.restore();
             c.restore();continue;
           }
-          const x=fx.aim.x*w,y=fx.aim.y*h,r=25+t*35;
+          const x=fx.aim.x*w,y=fx.aim.y*h,r=25+t*35+fx.charge*22;
           c.translate(x,y);c.rotate(-.1);c.beginPath();for(let i=0;i<16;i++){const a=i*Math.PI/8,rr=i%2?r*.47:r;c.lineTo(Math.cos(a)*rr,Math.sin(a)*rr);}c.closePath();c.fillStyle=fx.hit?'#edc662':'#e1d8b4';c.fill();c.strokeStyle=INK;c.lineWidth=2;c.stroke();
-          c.font='italic 900 20px Georgia';c.textAlign='center';c.fillStyle=INK;c.fillText(fx.hit?(fx.killed?'POP!':'POW!'):'PEW!',0,6);
-          if(fx.hit){c.font='bold 15px monospace';c.fillText('+'+fx.points,0,-r-8);}
+          c.font='italic 900 20px Georgia';c.textAlign='center';c.fillStyle=INK;c.fillText(fx.charge>=.99?'BAM!':fx.hit?(fx.killed?'POP!':'POW!'):'PEW!',0,6);
+          if(fx.hit){c.font='bold 15px monospace';c.fillText('−'+fx.damage,0,-r-8);c.font='bold 12px monospace';c.fillText('+'+fx.points,0,r+16);}
         }c.restore();
       }
     }
