@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {HandTracking,physicalHand} from '../dist/tracking.mjs';
+import {HandTracking} from '../dist/tracking.mjs';
 import {readGunPose} from '../dist/core.mjs';
 function observation(offset=0,lift=0,handedness='Left'){
   const p=Array.from({length:21},()=>({x:.5,y:.6,z:0}));p[0]={x:.5,y:.7};
@@ -38,9 +38,8 @@ test('a relaxed thumb arms immediately and stays active without a strict pose',(
   assert.equal(tracking.update([lifted],880).shots.length,1);
 });
 
-test('anatomical left and right are preserved even when first seen on the wrong screen half',()=>{
- assert.equal(physicalHand('Left'),'right');assert.equal(physicalHand('Right'),'left');
- for(const [label,side,offset] of [['Right','left',-.15],['Left','right',.15]]){
+test('mirrored preview position assigns either model label to the matching gun',()=>{
+ for(const [label,side,offset] of [['Right','left',.15],['Left','left',.15],['Right','right',-.15],['Left','right',-.15]]){
   const t=new HandTracking(),hand=lift=>({...observation(offset,lift,label),confidence:.98});
   for(let now=0;now<=240;now+=40)t.update([hand(0)],now);
   assert.equal(t.update([hand(.025)],280).shots[0]?.hand,side);
@@ -52,8 +51,8 @@ test('high-confidence label flips cannot steal an already tracked single hand',(
  const result=t.update([{...observation(.15,.05,'Left'),confidence:.98}],280);
  assert.equal(result.shots[0]?.hand,'left');assert.equal(t.slots.right.visible,false);
 });
-test('independent anatomical hands keep ownership as detection order changes',()=>{
- const t=new HandTracking(),left=lift=>({...observation(-.2,lift,'Right'),confidence:.98}),right=lift=>({...observation(.2,lift,'Left'),confidence:.98});
+test('independent screen hands keep ownership as detection order changes',()=>{
+ const t=new HandTracking(),left=lift=>({...observation(.2,lift,'Right'),confidence:.98}),right=lift=>({...observation(-.2,lift,'Left'),confidence:.98});
  for(let now=0;now<=240;now+=40)t.update(now%80?[left(0),right(0)]:[right(0),left(0)],now);
  assert.deepEqual(t.update([right(.04),left(.04)],280).shots.map(s=>s.hand),['left','right']);
 });
@@ -62,6 +61,30 @@ test('manual swap resets cleanly and keeps the preview and gun on the same ident
  const t=new HandTracking();t.swapHands=true;
  for(let now=0;now<=240;now+=40)t.update([{...observation(.1,0,'Left'),confidence:.98}],now);
  const result=t.update([{...observation(.1,.05,'Left'),confidence:.98}],280);
- assert.equal(result.shots[0].hand,'left');assert.equal(result.preview[0].side,'left');
- t.swapHands=false;t.reset();const changed=t.update([{...observation(.1,0,'Left'),confidence:.98}],320);assert.equal(changed.preview[0].side,'right');assert.equal(changed.shots.length,0);
+ assert.equal(result.shots[0].hand,'right');assert.equal(result.preview[0].side,'right');
+ t.swapHands=false;t.reset();const changed=t.update([{...observation(.1,0,'Left'),confidence:.98}],320);assert.equal(changed.preview[0].side,'left');assert.equal(changed.shots.length,0);
+});
+
+
+test('manual swap also works with uncertain labels and one visible hand',()=>{
+ const t=new HandTracking();t.swapHands=true;
+ for(let now=0;now<=240;now+=40)t.update([observation(.2,0,'Unknown')],now);
+ const r=t.update([observation(.2,.05,'Unknown')],280);
+ assert.equal(r.preview[0].side,'right');assert.equal(r.shots[0].hand,'right');
+});
+test('a hand keeps its gun while moving through the centre; reset uses the new screen position',()=>{
+ const t=new HandTracking();
+ for(let i=0;i<=8;i++)t.update([observation(.2-i*.04,0,i%2?'Right':'Left')],i*50);
+ assert.equal(t.update([observation(-.12,.05)],450).shots[0].hand,'left');
+ t.reset();assert.equal(t.update([observation(-.12)],500).preview[0].side,'right');
+});
+
+
+test('two newly seen hands keep left-to-right preview order even on the same half',()=>{
+ for(const reverse of [false,true]){
+  const t=new HandTracking(),a=observation(.1),b=observation(.25);
+  const result=t.update(reverse?[b,a]:[a,b],0);
+  assert.equal(result.preview.find(h=>h.side==='left').landmarks[0].x,.75);
+  assert.equal(result.preview.find(h=>h.side==='right').landmarks[0].x,.6);
+ }
 });

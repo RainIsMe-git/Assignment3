@@ -19,7 +19,7 @@ test('queen wards require freeze and push counters; armor cannot be bypassed by 
   for(let i=0;i<100;i++)g.shoot('right',1);assert.equal(queen.hp,60);assert.equal(g.shoot('right',1).blocked,true);assert.equal(g.finished,false);
   q.phase='windup';q.kind='freeze';q.remaining=2.8;g.palm.setHands({left:true});
   assert.ok(advance(g,.7).some(e=>e.type==='queen-counter'));assert.equal(q.wards.freeze,false);assert.equal(q.phase,'exposed');
-  g.palm.setHands({});assert.equal(g.shoot('right',1).appliedDamage,3);
+  g.palm.setHands({});assert.equal(g.shoot('right',1).appliedDamage,2.25);
   for(let i=0;i<30;i++)g.shoot('right',1);assert.equal(queen.hp,30);
   q.phase='windup';q.kind='push';q.remaining=2.8;g.palm.setHands({left:true});advance(g,1);
   assert.equal(q.counter,0);assert.equal(q.phase,'windup');assert.ok(q.remaining<2.8&&q.remaining>2);
@@ -41,8 +41,8 @@ test('countering an incoming orb reflects it and prevents the pending hit',()=>{
 test('empty energy in palm lessons is refilled; recharge lesson still teaches real recovery',()=>{
   const g=new GardenGame(),lesson=new Tutorial();lesson.index=4;g.palm.energy=0;g.palm.setHands({left:true,right:true});
   for(let i=0;i<14;i++){lesson.prepare(g);g.tick(.1);lesson.update(.1,g);}
-  assert.ok(lesson.success>0);assert.ok(g.palm.energy>9);assert.equal(lesson.unlimitedEnergy,true);
-  for(let i=0;i<10;i++){lesson.prepare(g);g.tick(.1);lesson.update(.1,g);}assert.equal(lesson.step,'recharge');assert.equal(lesson.unlimitedEnergy,false);assert.ok(g.palm.energy<=7);
+  assert.ok(lesson.success>0);assert.ok(g.palm.energy>4);assert.equal(lesson.unlimitedEnergy,true);
+  for(let i=0;i<10;i++){lesson.prepare(g);g.tick(.1);lesson.update(.1,g);}assert.equal(lesson.step,'recharge');assert.equal(lesson.unlimitedEnergy,false);assert.ok(g.palm.energy<=2);
   g.palm.setHands({});for(let i=0;i<18;i++){lesson.prepare(g);g.tick(.1);lesson.update(.1,g);}assert.equal(lesson.step,'done');
 });
 test('short palm dropouts do not erase a nearly completed training gesture',()=>{

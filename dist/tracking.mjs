@@ -1,22 +1,25 @@
 import {GunTrigger,readGunPose,TRACKING_GRACE_MS} from './core.mjs';
-import {physicalHand} from './hand-identity.mjs';
-import {ClapDetector} from './clap.mjs';
+import {previewX} from './hand-identity.mjs';
+import {BurstDetector} from './burst.mjs';
 import {readStopPose} from './palm-control.mjs';
-export {physicalHand} from './hand-identity.mjs';
 const sides=['left','right'];
 export class HandTracking {
-  constructor(){this.swapHands=false;this.clapDetector=new ClapDetector();this.slots=Object.fromEntries(sides.map(side=>[side,{trigger:new GunTrigger(),pose:null,anchor:null,lastValid:-Infinity,lastStrict:-Infinity,lastSeen:-Infinity,visible:false,stopSince:null,stopping:false}]));}
-  sideFor(label){const side=physicalHand(label);return side&&this.swapHands?(side==='left'?'right':'left'):side;}
-  reset(){this.clapDetector.reset();for(const slot of Object.values(this.slots)){slot.trigger.reset();slot.pose=null;slot.anchor=null;slot.lastSeen=slot.lastValid=slot.lastStrict=-Infinity;slot.visible=false;slot.stopSince=null;slot.stopping=false;}}
+  constructor(){this.swapHands=false;this.burstDetector=new BurstDetector();this.slots=Object.fromEntries(sides.map(side=>[side,{trigger:new GunTrigger(),pose:null,anchor:null,lastValid:-Infinity,lastStrict:-Infinity,lastSeen:-Infinity,visible:false,stopSince:null,stopping:false}]));}
+  reset(){this.burstDetector.reset();for(const slot of Object.values(this.slots)){slot.trigger.reset();slot.pose=null;slot.anchor=null;slot.lastSeen=slot.lastValid=slot.lastStrict=-Infinity;slot.visible=false;slot.stopSince=null;slot.stopping=false;}}
   expire(now){for(const slot of Object.values(this.slots)){slot.visible=now-slot.lastValid<=TRACKING_GRACE_MS;if(now-slot.lastSeen>150){slot.stopping=false;slot.stopSince=null;}if(!slot.visible)slot.trigger.miss(now);}}
-  update(observations,now){
-    const clap=this.clapDetector.update(observations,now);
-    const candidates=(observations||[]).filter(o=>o.confidence>=.4).map(o=>({observation:o,pose:readGunPose(o.landmarks,o.worldLandmarks,o.aspectRatio),stop:readStopPose(o.landmarks,o.worldLandmarks,o.aspectRatio),anchor:o.landmarks?.[0],side:o.confidence>=.75?this.sideFor(o.handedness):null})).filter(o=>o.pose&&o.anchor).slice(0,2);
-    // Preserve a nearby established identity even if a single label flickers.
-    // For a new hand, anatomy wins over which half of the preview it occupies.
-    const cost=(o,side)=>{const s=this.slots[side];return s.anchor&&now-s.lastSeen<600?Math.hypot(s.anchor.x-o.anchor.x,s.anchor.y-o.anchor.y):o.side?(o.side===side?.4:1.4):Math.abs((1-o.anchor.x)-(side==='left'?.25:.75));};
+  update(observations,now,{burstEnabled=true}={}){
+    if(!burstEnabled)this.burstDetector.reset();
+    const burst=burstEnabled&&this.burstDetector.update(observations,now);
+    const candidates=(observations||[]).filter(o=>o.confidence>=.4).map(o=>({observation:o,pose:readGunPose(o.landmarks,o.worldLandmarks,o.aspectRatio),stop:readStopPose(o.landmarks,o.worldLandmarks,o.aspectRatio),anchor:o.landmarks?.[0]})).filter(o=>o.pose&&o.anchor).slice(0,2);
+    // Start from mirrored screen position, then follow nearby wrists so label
+    // flicker or a brief reach toward the centre cannot exchange charged guns.
+    const cost=(o,side)=>{const s=this.slots[side],x=previewX(o.anchor.x),target=(side==='left')!==this.swapHands?.25:.75;return s.anchor&&now-s.lastSeen<600?Math.hypot(s.anchor.x-o.anchor.x,s.anchor.y-o.anchor.y):Math.abs(x-target);};
     const assigned={};
-    if(candidates.length===2){const [a,b]=candidates,swap=cost(a,'right')+cost(b,'left')<cost(a,'left')+cost(b,'right');assigned.left=swap?b:a;assigned.right=swap?a:b;}
+    if(candidates.length===2){
+      const [a,b]=candidates,fresh=sides.every(side=>!this.slots[side].anchor||now-this.slots[side].lastSeen>=600);
+      const swap=fresh?(previewX(a.anchor.x)>previewX(b.anchor.x))!==this.swapHands:cost(a,'right')+cost(b,'left')<cost(a,'left')+cost(b,'right');
+      assigned.left=swap?b:a;assigned.right=swap?a:b;
+    }
     else if(candidates.length){const a=candidates[0];assigned[cost(a,'left')<=cost(a,'right')?'left':'right']=a;}
     const shots=[];let valid=0;
     for(const side of sides){
@@ -38,6 +41,6 @@ export class HandTracking {
       }else slot.trigger.miss(now);
     }
     const preview=sides.filter(side=>assigned[side]).map(side=>({...assigned[side].observation,side}));
-    this.expire(now);return {shots:clap?[]:shots,valid,preview,clap};
+    this.expire(now);return {shots:burst?[]:shots,valid,preview,burst};
   }
 }

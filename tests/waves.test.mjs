@@ -37,7 +37,7 @@ test('waves contain exact growing groups, a frozen pause and a real intermission
    assert.equal(g.waveState,'break');assert.equal(g.plants.length,0);
    const remaining=g.breakRemaining;g.pause('manual');g.tick(.1);assert.equal(g.breakRemaining,remaining);g.resume();
    for(let n=0;n<20;n++)g.tick(.1);assert.equal(g.wave,wave,'no next wave before rest ends');
-   let started=false;for(let n=0;n<16;n++)for(const event of g.tick(.1))if(event.type==='wave-start')started=true;
+   let started=false;for(let n=0;n<40&&!started;n++)for(const event of g.tick(.1))if(event.type==='wave-start')started=true;
    assert.equal(started,true);assert.equal(g.wave,wave+1);assert.ok(g.plants.length>=7);
   }
  }

@@ -23,8 +23,8 @@ test('stop pose has priority over gun, settles briefly, and expires without a gh
  assert.deepEqual(t.update([gun],200).shots,[]);assert.equal(t.slots.left.stopping,false);
  t.update([palm(.2)],240);t.update([palm(.2)],400);t.expire(560);assert.equal(t.slots.left.stopping,false);
 });
-test('shared energy lasts ten seconds, cannot recharge while held, and partial energy works',()=>{
- const p=new PalmEnergy();p.setHands({left:true});for(let i=0;i<100;i++)p.update(.1);
+test('shared energy initially lasts five seconds, cannot recharge while held, and partial energy works',()=>{
+ const p=new PalmEnergy();p.setHands({left:true});for(let i=0;i<50;i++)p.update(.1);
  assert.equal(p.energy,0);p.update(.1);assert.equal(p.active,0);
  for(let i=0;i<10;i++)p.update(.1);assert.equal(p.energy,0);
  p.setHands({});for(let i=0;i<10;i++)p.update(.1);assert.ok(Math.abs(p.energy-1)<1e-8);
@@ -32,8 +32,8 @@ test('shared energy lasts ten seconds, cannot recharge while held, and partial e
  p.setHands({});for(let i=0;i<100;i++)p.update(.1);assert.equal(p.energy,MAX_ENERGY);
 });
 test('two palms share one pool and drain faster, without restoring energy by switching hands',()=>{
- const p=new PalmEnergy();p.setHands({left:true});p.update(.1);p.setHands({right:true});p.update(.1);assert.ok(Math.abs(p.energy-9.8)<1e-8);
- p.setHands({left:true,right:true});p.update(.1);assert.ok(Math.abs(p.energy-9.64)<1e-8);assert.equal(p.active,2);
+ const p=new PalmEnergy();p.setHands({left:true});p.update(.1);p.setHands({right:true});p.update(.1);assert.ok(Math.abs(p.energy-4.8)<1e-8);
+ p.setHands({left:true,right:true});p.update(.1);assert.ok(Math.abs(p.energy-4.64)<1e-8);assert.equal(p.active,2);
  p.energy=.04;p.update(.1);assert.equal(p.energy,0);assert.ok(Math.abs(p.strength-.25)<1e-8);
 });
 test('one palm slows plants while the other fires; two push back and pause freezes energy',()=>{
@@ -42,14 +42,14 @@ test('one palm slows plants while the other fires; two push back and pause freez
  assert.equal(g.shoot('left'),null);g.plants[0].hp=2;assert.ok(g.shoot('right'));
  const before=g.plants[0].depth;g.palm.setHands({left:true,right:true});g.tick(.1);assert.ok(g.plants[0].depth<before);
  const energy=g.palm.energy;g.pause('manual');g.tick(.1);assert.equal(g.palm.energy,energy);
- g.reset();assert.equal(g.palm.energy,10);assert.equal(g.palm.active,0);
+ g.reset();assert.equal(g.palm.energy,5);assert.equal(g.palm.active,0);
 });
 test('wave five retains the small boss; it survives contact and defeating it continues the campaign',()=>{
  const g=new GardenGame(()=>.5);g.reset('survival');g.plants=[];g.wave=4;g.beginWave();
  const boss=g.plants.find(p=>p.boss);assert.ok(boss);assert.equal(boss.maxHp,20);assert.equal(g.plants.length+g.toSpawn,WAVE_COUNTS[4]);
  g.plants=[boss];g.toSpawn=0;boss.depth=.9999;g.tick(.1);assert.equal(g.hp,3);assert.equal(boss.hp,20);assert.equal(boss.depth,.62);assert.equal(g.finished,false);
- const hp=boss.hp;g.shoot('right',1);assert.equal(boss.hp,hp-3);
- boss.hp=1;g.shoot('left');g.tick(.1);assert.equal(g.won,false);assert.equal(g.waveState,'break');assert.ok(g.score>=1500);
+ const hp=boss.hp;g.shoot('right',1);assert.equal(boss.hp,hp-2.25);
+ boss.hp=1;g.shoot('left',1);g.tick(.1);assert.equal(g.won,false);assert.equal(g.waveState,'break');assert.ok(g.score>=1500);
 });
 test('preview colors and readable letters use the same assigned identity even if raw labels flip',()=>{
  const t=new HandTracking();const a=palm(.2),b=palm(-.2);t.update([a,b],0);

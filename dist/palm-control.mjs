@@ -1,4 +1,5 @@
-export const MAX_ENERGY=10, ENERGY_REGEN=1, DOUBLE_DRAIN=1.6;
+export const PALM_CAPACITIES=Object.freeze([5,6,8,10,12]);
+export const MAX_ENERGY=PALM_CAPACITIES[0], ENERGY_REGEN=1, DOUBLE_DRAIN=1.6;
 export function cameraStatusKey({valid,visible,palms,active,energy}){
   if(palms){
     if(energy<=0)return palms===2?'cameraPalmsEmpty':'cameraPalmEmpty';
@@ -23,11 +24,12 @@ export function readStopPose(points,world,aspect=1){
 }
 export class PalmEnergy {
   constructor(){this.reset();}
-  reset(){this.energy=MAX_ENERGY;this.hands={left:false,right:false};this.active=0;this.strength=0;}
+  reset(){this.maxEnergy=MAX_ENERGY;this.energy=this.maxEnergy;this.hands={left:false,right:false};this.active=0;this.strength=0;}
+  upgrade(capacity){this.maxEnergy=capacity;this.energy=this.maxEnergy;}
   setHands(hands={}){this.hands={left:!!hands.left,right:!!hands.right};if(!this.hands.left&&!this.hands.right){this.active=0;this.strength=0;}}
   update(dt){
     const count=Number(this.hands.left)+Number(this.hands.right);this.active=0;this.strength=0;
-    if(!count){this.energy=Math.min(MAX_ENERGY,this.energy+dt*ENERGY_REGEN);return;}
+    if(!count){this.energy=Math.min(this.maxEnergy,this.energy+dt*ENERGY_REGEN);return;}
     if(dt<=0||this.energy<=.000001)return;
     const needed=dt*(count===2?DOUBLE_DRAIN:1),spent=Math.min(needed,this.energy);
     this.energy=Math.max(0,this.energy-spent);if(this.energy<.000001)this.energy=0;

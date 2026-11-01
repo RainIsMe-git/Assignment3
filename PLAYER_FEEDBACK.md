@@ -77,7 +77,7 @@ These notes collect the feedback I sent while testing the game, including the ea
 
 ## Round 9 — 1 November: feedback on the submission materials
 
-| Test / review feedback | Change | Effect |
+| Test feedback | Change | Effect |
 | --- | --- | --- |
 | Make the materials English-first and less mechanical. Replace “verification and status” with “effect.” | Rewrote the documents around the idea, decisions and actual test feedback. Kept code checks in PROCESS instead of every table row. | The feedback record now shows where a change helped and where later testing contradicted it. |
 
@@ -89,8 +89,52 @@ These notes collect the feedback I sent while testing the game, including the ea
 | Clapping had no effect even though it was ready. | Relaxed the open-finger check and allowed the approach to continue across slower frames and brief overlap-related missing data. | The previous version did not work reliably in this test. The new tolerances address that failure; actual improvement needs another play session. |
 | Show a flashing, limited-time clap prompt only after the combo requirement is reached. | Replaced the permanent lower-screen indicator with an eight-second flashing opportunity. It disappears after use or expiry. | The screen is quieter outside the opportunity, and the prompt now tells the player when to act. |
 
+## Round 11 — 1 November: mirrored controls, missed claps and progression
+
+| Test feedback | Change | Effect |
+| --- | --- | --- |
+| Firing timing now feels accurate, but the hands are reversed: the left side of the mirrored preview should control the blue/teal left gun, and the right side the red right gun. | Assign new hands by their mirrored preview positions, then follow their wrists between frames. Preview markers and shots share that assignment. Retire the old saved swap preference; retain the optional swap button. Leave the firing thresholds unchanged. | The user confirmed that firing timing had improved, but the previous mapping was still wrong. The new position-based mapping has not yet had a real-camera retest. |
+| Clapping still does not register; make it more forgiving. | During the eight-second reward window, accept a separated-to-close movement without requiring extended fingers. Allow near contact, slower frames and one briefly hidden hand after a visible approach. | The previous relaxation was insufficient in actual play. Whether this wider motion-based rule is comfortable and avoids unwanted claps remains unresolved until the next play session. |
+| Every few waves, show an upgrade that improves shooting damage and maximum push time. | After waves 2, 4, 6 and 8, automatically add 20% of starting gun damage and two seconds of shared palm capacity, refill energy, and show both gains during a five-second break. | The user found this first upgrade proposal too strong and requested a weaker starting state; the following round revises the curve. |
+
+## Round 12 — 1 November: weaker start and a five-damage finish
+
+| Test feedback | Change | Effect |
+| --- | --- | --- |
+| The upgrade proposal is too strong. Start palm energy at five seconds instead of adding to ten, lower starting damage and make the ending stronger. | Reduced starting palm capacity to five seconds; four upgrades bring it to 7, 9, 11 and 13 seconds. Reduced initial shots to 0.75–2.25 damage and moved more strength into later waves. | The user rejected the previous starting strength. The revised curve has not yet been playtested, so its early difficulty and late balance remain unresolved. |
+| Clarification: make the ending full-charge damage five points. | Set full-charge damage to 2.25, 3, 3.6, 4.2 and 5 across the five pairs of waves. Upgrade cards show the actual damage range rather than a percentage bonus. | The final damage target is confirmed by the user; there is no subsequent report of how it feels in play. |
+
+## Round 13 — 1 November: visual upgrade cues and palm capacity
+
+| Test feedback | Change | Effect |
+| --- | --- | --- |
+| Use graphics and simple text for upgrades, without exact values. | Replaced rank and numeric stat lines with paired gun and palm illustrations, upward arrows and the short labels “Stronger shots” and “Longer push.” | The user preferred a simpler presentation to the numeric card. No follow-up feedback on the new layout has been supplied. |
+| Change palm energy to 5, 6, 8, 10 and 12 seconds. | Set explicit capacities for the starting state and four upgrades, including a smaller first increase. Upgrades still refill the shared pool. | The requested curve is now specified; its balance has not been assessed in a subsequent play session. |
+| Confirm that ordinary single-bullet damage also improves. | Kept the same upgrade multiplier on every shot, including zero-charge shots, and clarified this in the instructions. | This was a request for confirmation, not a report that damage had failed to increase. No new playtest outcome was supplied. |
+
+## Round 14 — 1 November: replace clapping with fingertip contact
+
+| Test feedback | Change | Effect |
+| --- | --- | --- |
+| Remove clapping; trigger its former effect when the left and right index fingertips point toward each other and touch, as in the supplied image. | Replaced the clap detector with opposing-index proximity and brief contact detection. Kept the 20-hit milestone, eight-second window and single area hit. | The author chose a different gesture after earlier missed claps. No real-camera feedback on the replacement has been supplied yet. |
+| Change the lower hand image to show two fingers meeting and a large energy burst. | Reused the glove artwork for an inward fingertip pose, updated the prompt icon, and added a bright contact core with expanding energy rings. | The requested visual direction is implemented; whether it communicates the action clearly in play awaits the author's feedback. |
+
+## Round 15 — 1 November: gentler early fingertip burst
+
+| Test feedback | Change | Effect |
+| --- | --- | --- |
+| The fingertip burst deals too much damage early on. Lower it and increase it gradually with levels, reaching the current effect at maximum. | Set burst damage to 1.5, 1.75, 2, 2.25 and 2.5 across the starting rank and four existing wave upgrades. Kept the contact animation and reward timing. | The user found the previous fixed damage too strong early in play. The new progression has not yet received playtest feedback. |
+
 ## 中文简要对照
 
 所有记录均来自测试中提出的问题。早期重点是识别迟钝、缺少音效反馈、难瞄准以及手套不好看；随后转向左右手对应、快速射击、波次和难度。
 
 几次修改的效果并不理想：第一轮左右手修复后颜色仍不对；主页说明后来被认为太多；降低血量后后期又太简单；爆燃太强；加入女王后最后一关又太难；第一版拍手在真实测试中没效果。最新一轮放宽拍手识别，并将提示改为达成 20 连击后闪烁 8 秒，补充左右手交换按钮。效果是否足够好，继续根据下一轮测试反馈更新。
+
+第 11 轮反馈确认抬指时机较准确，但左右手仍反了、拍手依旧无效。本轮改为按镜像预览位置分配左右枪，继续放宽拍手，并在第 2、4、6、8 波后同时提升伤害与击退时长；新改动仍待真实试玩反馈。
+
+第 14 轮要求删除拍掌，改为两手食指相对碰触，并让下方手套在指尖相碰后迸发能量。已替换识别和画面；尚未收到这版的真实试玩效果反馈。
+
+第 12 轮认为升级方案过强，要求削弱初始状态，并明确结尾满蓄力为 5 点。现改为开局 2.25 点满蓄力、5 秒能量，最终成长为 5 点、13 秒；平衡效果仍待试玩。
+
+第 13 轮要求用图标和短文表示升级，掌心能量改为 5、6、8、10、12，并确认普通单发也提升伤害；实际试玩效果仍待后续反馈。

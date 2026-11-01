@@ -90,7 +90,7 @@ test('charged damage has three levels and defeats a cactus faster',()=>{
   assert.equal(g.shoot('right',0),null);assert.equal(g.kills,1);
 });
 test('simultaneous shots reselect living targets without counting an empty shot',()=>{
-  const g=new GardenGame();g.plants[0].hp=1;g.spawn(.6,.1);g.plants[1].hp=3;
+  const g=new GardenGame();g.plants[0].hp=1;g.spawn(.6,.1);g.plants[1].hp=2.25;
   const first=g.shoot('left',1),second=g.shoot('right',1);assert.notEqual(first.targetId,second.targetId);assert.equal(g.hits,2);assert.equal(g.kills,2);
   assert.equal(g.shoot('right',1),null);assert.equal(g.shots,2);assert.equal(g.hits,2);
 });

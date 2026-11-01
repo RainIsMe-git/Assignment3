@@ -3,8 +3,9 @@ import {paintGarden} from './backdrop.mjs';
 import {perspectiveHandPaths,gunPlacement} from './hand-art.mjs';
 import {shotStyle} from './combat-feedback.mjs';
 import {HAND_COLORS} from './hand-identity.mjs';
-import {CLAP_CONTACT,CLAP_DURATION} from './clap.mjs';
-import {clapHandPaths} from './clap-art.mjs';
+import {BURST_CONTACT,BURST_DURATION} from './burst.mjs';
+import {burstHandPlacement} from './burst-art.mjs';
+import {handPaths} from './hand-art.mjs';
 import {stopHandPaths} from './palm-art.mjs';
 const INK='#29242b', CREAM='#fff2d9', GREEN='#4f8a3c';
 export class GardenRenderer {
@@ -164,18 +165,35 @@ export class GardenRenderer {
     if(fx.killed){c.font='bold 12px Georgia';c.fillStyle=INK;c.fillText('+'+fx.points,0,r+20);}
     c.restore();
   }
-  clapImpact(impacts){for(const impact of impacts)this.effects.push({pulse:true,aim:impact.aim,life:0,duration:.55});}
-  drawClap(time){
-    const c=this.c,w=this.w,h=this.h,u=clamp(time/CLAP_CONTACT),after=Math.max(0,time-CLAP_CONTACT);
-    const separation=time<CLAP_CONTACT?.22*(1-u*u)+.018:.018+Math.min(.12,after*.22),scale=Math.min(w/850,h/530)*.93;
+  burstImpact(impacts){for(const impact of impacts)this.effects.push({pulse:true,aim:impact.aim,life:0,duration:.55});}
+  drawBurst(time){
+    const c=this.c,w=this.w,h=this.h,u=clamp(time/BURST_CONTACT),after=Math.max(0,time-BURST_CONTACT);
+    const cx=w*.5,cy=h*.76,scale=Math.min(w/850,h/530);
     for(const side of ['left','right']){
-      const sign=side==='left'?1:-1;c.save();c.translate(w*(.5-sign*separation),h*(.78+after*.10));c.rotate(sign*(.2+(time<CLAP_CONTACT?.16*(1-u):-.12*after)));c.scale(sign*scale*.64,scale);
-      for(const [path,fill,width,stroke] of clapHandPaths(HAND_COLORS[side]))this.path(path,fill,width?stroke||INK:null,width);c.restore();
+      const p=burstHandPlacement(side,time,w,h);c.save();c.translate(p.x,p.y);c.scale(p.sign*p.scale,p.scale);
+      for(const [path,fill,width,stroke] of handPaths('two',HAND_COLORS[side]))this.path(path,fill,width?stroke||INK:null,width);c.restore();
+      if(time<BURST_CONTACT){
+        c.save();c.globalAlpha=.3+u*.6;this.ellipse(p.tip.x,p.tip.y,(5+u*13)*scale,(5+u*13)*scale,'#fff6cb','#b78beb',2);c.restore();
+      }
     }
-    if(time>=CLAP_CONTACT){
-      const progress=clamp(after/.6);c.save();c.globalAlpha=(1-progress)*.8;
-      this.ellipse(w*.5,h*.65,w*(.03+progress*.8),h*(.03+progress*.6),null,'#e9baff',6*(1-progress)+1);
-      if(after<.18){c.translate(w*.5,h*.65);for(let i=0;i<8;i++){c.rotate(Math.PI/4);this.path('M22 0 L48 0 M30 -6 L43 -8',null,'#fff0b2',4);}}
+    if(time>=BURST_CONTACT){
+      const progress=clamp(after/(BURST_DURATION-BURST_CONTACT)),fade=1-progress;
+      c.save();
+      // One expanding energy wave, with its centre exactly at fingertip contact.
+      c.globalAlpha=fade*.85;
+      const radius=(30+progress*Math.max(w,h)*.95)*scale;
+      this.ellipse(cx,cy,radius,radius*.72,null,'#d9a6ff',Math.max(1,8*fade*scale));
+      this.ellipse(cx,cy,radius*.82,radius*.59,null,'#fff0b2',Math.max(1,3*fade*scale));
+      const glow=c.createRadialGradient(cx,cy,0,cx,cy,(65+progress*120)*scale);
+      glow.addColorStop(0,'#ffffef');glow.addColorStop(.22,'#fff1bbee');glow.addColorStop(.48,'#c08dff99');glow.addColorStop(1,'#b879ed00');
+      c.fillStyle=glow;c.fillRect(cx-220*scale,cy-220*scale,440*scale,440*scale);
+      c.translate(cx,cy);c.strokeStyle='#f9df92';c.lineWidth=3*scale;
+      for(let i=0;i<12;i++){
+        const a=i*Math.PI/6,r=(35+progress*220)*scale,length=(16+fade*35)*scale;
+        c.beginPath();c.moveTo(Math.cos(a)*r,Math.sin(a)*r);c.lineTo(Math.cos(a)*(r+length),Math.sin(a)*(r+length));c.stroke();
+      }
+      const star=(18+Math.sin(progress*Math.PI)*22)*scale;c.scale(star,star);
+      this.path('M0 -1 L.22 -.26 L.9 -.65 L.36 -.08 L1 .18 L.28 .3 L.1 1 L-.18 .34 L-.88 .65 L-.38 .05 L-1 -.18 L-.25 -.3Z','#fff8de','#b887d8',.06);
       c.restore();
     }
   }
@@ -210,7 +228,7 @@ export class GardenRenderer {
       for(const id of this.healthTrails.keys())if(!plants.some(p=>p.id===id))this.healthTrails.delete(id);
       const queen=game.plants.find(p=>p.finalBoss);if(queen)this.queenAttack(queen,game.enemyTime);
       for(const side of ['left','right']){
-        if(game.clapTime>0)continue;
+        if(game.burstTime>0)continue;
         const hand=hands[side],color=HAND_COLORS[side];
         if(hand.stopping){this.stopGlove(side,color,game.palm?.active||0);continue;}
         const idle=this.reducedMotion?0:Math.sin(this.t*2.2+(side==='left'?0:1.6))*2;
@@ -253,7 +271,7 @@ export class GardenRenderer {
           c.restore();
         }
       }
-      if(game.clapTime>0)this.drawClap(CLAP_DURATION-game.clapTime);
+      if(game.burstTime>0)this.drawBurst(BURST_DURATION-game.burstTime);
       for(const fx of this.effects){
         if(fx.life<0)continue;
         if(fx.pulse){const u=fx.life/fx.duration;c.save();c.globalAlpha=1-u;this.ellipse(fx.aim.x*w,fx.aim.y*h,20+u*55,12+u*35,null,'#eed29c',4);c.restore();continue;}

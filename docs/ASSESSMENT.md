@@ -16,9 +16,9 @@ npm run play
 
 The browser opens automatically. No install or build step is needed. Windows users can also double-click `Play Garden Gunners.cmd`.
 
-Choose **Train with mouse** to try the complete game without the camera dependency. Press A or D to fire, wait for a stronger charge, hold Q or E to push, and hold both for a stronger push. After 20 consecutive hits, a flashing eight-second clap opportunity appears; C activates it. The six lessons lead into wave one, or you can skip them.
+Choose **Train with mouse** to try the complete game without the camera dependency. Press A or D to fire, wait for a stronger charge, hold Q or E to push, and hold both for a stronger push. After 20 consecutive hits, a flashing eight-second fingertip-burst opportunity appears; C activates it. The six lessons lead into wave one, or you can skip them.
 
-For camera play, choose **Train with hands** and allow access. Lift the index to fire, show a palm to push, and bring separated hands together to clap when prompted. The first run downloads MediaPipe and its model. The preview's ↔ button swaps hand controls if the mapping feels reversed.
+For camera play, choose **Train with hands** and allow access. Lift the index to fire, show a palm to push, and point the two index fingers toward each other, touching their tips when prompted. A brief steady near-touch also works; keep both hands visible. The first run downloads MediaPipe and its model. The preview's ↔ button swaps hand controls if the mapping feels reversed.
 
 Try an interruption as well: pause with Esc, or move both hands out of view in camera mode. The game pauses and keeps the preview clear. Home closes the camera. If camera permission is denied or the model is unavailable, retry and mouse play remain available.
 
@@ -27,8 +27,8 @@ Try an interruption as well: pause with Esc, or move both hands out of view in c
 | Assignment requirement | In this project |
 | --- | --- |
 | A clear idea and intended user | README introduces a casual desktop finger-gun game with automatic targeting. |
-| Deliberate input and meaningful response | Finger lift or A/D fires; charging changes damage; palms move enemies; a timed clap damages the crowd. |
-| Feedback and understandable next action | Fingertip charge, shot audio, bullets, health bars, push effects, a clap countdown, tutorial steps and reset/exit controls. |
+| Deliberate input and meaningful response | Finger lift or A/D fires; charging changes damage; palms move enemies; touching index tips during the reward window damages the crowd. |
+| Feedback and understandable next action | Fingertip charge, shot audio, bullets, health bars, push effects, a burst countdown and contact animation, tutorial steps and reset/exit controls. |
 | An ordinary mistake or interruption | Tracking loss pauses play; denied permission or failed loading offers mouse play. |
 | Trial with another person before explanation | Confirmed by the author. PROCESS describes the trial and resulting changes; PLAYER_FEEDBACK collects the test feedback from development. |
 | Working source, assets and setup | `dist/`, `scripts/`, `package.json` and the run instructions in README. The optional Python script only prepares audio and is not needed to run the submission. |
@@ -42,7 +42,7 @@ Try an interruption as well: pause with Esc, or move both hands out of view in c
 
 ## Submission notes
 
-The local game and source are in the repository; there is no separate hosted live version. Images marked **SIMULATED INPUT** show development checks, not recordings of a tester. Real-camera clap reliability and hand mapping are still being refined, as the latest feedback explains.
+The local game and source are in the repository; there is no separate hosted live version. Images marked **SIMULATED INPUT** show development checks, not recordings of a tester. The new fingertip gesture and revised hand mapping still need a real-camera retest, as the latest feedback explains.
 
 The author has confirmed permission to include the supplied audio files in the public repository. No participant recordings or camera images are included. The repository URL must still be submitted through Canvas; a Git push is not a Canvas submission.
 

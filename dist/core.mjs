@@ -1,6 +1,6 @@
-import {PalmEnergy} from './palm-control.mjs';
+import {PalmEnergy,PALM_CAPACITIES} from './palm-control.mjs';
 import {createQueen,updateQueen} from './queen.mjs';
-import {CLAP_EVERY,CLAP_DAMAGE,CLAP_CONTACT,CLAP_DURATION,CLAP_WINDOW} from './clap.mjs';
+import {BURST_EVERY,BURST_DAMAGE_BY_LEVEL,BURST_CONTACT,BURST_DURATION,BURST_WINDOW} from './burst.mjs';
 // Pure rules shared by the camera, mouse demo and automated tests.
 export const clamp = (v, a = 0, b = 1) => Math.max(a, Math.min(b, v));
 const distance = (a,b) => Math.hypot(a.x-b.x,a.y-b.y,(a.z||0)-(b.z||0));
@@ -33,6 +33,8 @@ export function readGunPose(points, worldPoints, aspectRatio=1) {
 export const CHARGE_MS=2000, TRACKING_GRACE_MS=750;
 export const SHOT_COOLDOWN_MS=110;
 export const WAVE_COUNTS=Object.freeze([6,10,16,22,30,34,38,42,46,50]);
+export const UPGRADE_EVERY=2;
+export const DAMAGE_MULTIPLIERS=Object.freeze([.75,1,1.2,1.4,5/3]);
 export const regularHealth=(type,wave)=>Math.min(5,Math.round((1+type*.3+Math.max(0,wave-1)*.36)*100)/100);
 export const chargeDamage=charge=>1+Math.floor(clamp(charge)*2+.000001);
 export class GunTrigger {
@@ -92,7 +94,7 @@ export class GardenGame {
   constructor(random=Math.random){this.random=random;this.reset();}
   reset(mode='practice'){
     this.mode=mode;this.plants=[];this.score=0;this.kills=0;this.shots=0;this.hits=0;this.combo=0;this.bestCombo=0;this.hp=5;this.elapsed=0;this.spawnIn=1;this.finished=false;this.won=false;this.pauseReason='';this.nextId=1;this.invulnerable=0;
-    this.wave=0;this.waveState='active';this.toSpawn=0;this.breakRemaining=0;this.palm=new PalmEnergy();this.clapReady=false;this.clapTime=0;this.clapHit=false;this.enemyTime=0;
+    this.wave=0;this.waveState='active';this.toSpawn=0;this.breakRemaining=0;this.upgradeLevel=0;this.palm=new PalmEnergy();this.burstReady=false;this.burstTime=0;this.burstHit=false;this.enemyTime=0;
     if(mode==='survival')this.beginWave();else this.spawn(0,.48);
   }
   beginWave(){
@@ -113,15 +115,18 @@ export class GardenGame {
   }
   pause(reason){this.pauseReason=reason;}
   resume(){this.pauseReason='';}
+  get damageMultiplier(){return DAMAGE_MULTIPLIERS[this.upgradeLevel];}
+  get burstDamage(){return BURST_DAMAGE_BY_LEVEL[this.upgradeLevel];}
+  shotDamage(charge=0){return (1+2*clamp(charge))*this.damageMultiplier;}
   shoot(hand,charge=0,activeSides=['left','right']){
-    if(this.finished||this.pauseReason||this.clapTime>0||this.palm.hands[hand])return null;
+    if(this.finished||this.pauseReason||this.burstTime>0||this.palm.hands[hand])return null;
     const target=automaticTargets(this.plants,activeSides)[hand]||automaticTargets(this.plants,[hand])[hand];
     // No enemy means no spent shot/charge and no false miss in the statistics.
     if(!target)return null;
-    const point=projectPlant(target),damage=chargeDamage(charge),shotPower=1+2*clamp(charge);
+    const point=projectPlant(target),damage=chargeDamage(charge),shotPower=this.shotDamage(charge);
     this.shots++;this.hits++;this.combo++;this.bestCombo=Math.max(this.bestCombo,this.combo);
-    const clapUnlocked=this.combo%CLAP_EVERY===0;
-    if(clapUnlocked)this.clapReady=true;
+    const burstUnlocked=this.combo%BURST_EVERY===0;
+    if(burstUnlocked)this.burstReady=true;
     const targets=[target];
     const impacts=targets.map(p=>{
       const plant={...p},aim=projectPlant(p),power=p.finalBoss&&p.duel.phase!=='exposed'?1:shotPower;
@@ -132,32 +137,32 @@ export class GardenGame {
       return {plant,aim:{x:aim.x,y:aim.y},targetId:p.id,killed,points,type:p.type,damage,appliedDamage:dealt,blocked:dealt===0};
     });
     this.plants=this.plants.filter(p=>p.hp>0);
-    return {hand,...impacts[0],charge:clamp(charge),hit:true,clapUnlocked};
+    return {hand,...impacts[0],charge:clamp(charge),hit:true,burstUnlocked};
   }
-  get clapReady(){return this.clapRemaining>0;}
-  set clapReady(value){this.clapRemaining=value?CLAP_WINDOW:0;}
-  clap(){
-    if(!this.clapReady||this.clapTime>0||this.pauseReason||this.finished)return false;
-    this.clapReady=false;this.clapTime=CLAP_DURATION;this.clapHit=false;return true;
+  get burstReady(){return this.burstRemaining>0;}
+  set burstReady(value){this.burstRemaining=value?BURST_WINDOW:0;}
+  burst(){
+    if(!this.burstReady||this.burstTime>0||this.pauseReason||this.finished)return false;
+    this.burstReady=false;this.burstTime=BURST_DURATION;this.burstHit=false;return true;
   }
   hurt(amount,events){if(this.invulnerable===0){this.hp=Math.max(0,this.hp-amount);this.combo=0;this.invulnerable=1;events.push({type:'damage'});}}
   tick(dt){
     if(this.finished||this.pauseReason)return [];
-    dt=clamp(dt,0,.1);this.elapsed+=dt;this.invulnerable=Math.max(0,this.invulnerable-dt);this.palm.update(dt);this.clapRemaining=Math.max(0,this.clapRemaining-dt);
+    dt=clamp(dt,0,.1);this.elapsed+=dt;this.invulnerable=Math.max(0,this.invulnerable-dt);this.palm.update(dt);this.burstRemaining=Math.max(0,this.burstRemaining-dt);
     const enemyDt=dt;this.enemyTime+=enemyDt;
     const events=[];
-    if(this.clapTime>0){
-      this.clapTime=Math.max(0,this.clapTime-dt);
-      if(!this.clapHit&&this.clapTime<=CLAP_DURATION-CLAP_CONTACT){
-        this.clapHit=true;const impacts=[];
+    if(this.burstTime>0){
+      this.burstTime=Math.max(0,this.burstTime-dt);
+      if(!this.burstHit&&this.burstTime<=BURST_DURATION-BURST_CONTACT){
+        this.burstHit=true;const impacts=[];
         for(const p of this.plants){
           const floor=p.finalBoss?(p.duel.phase==='waiting'?p.hp:p.duel.wards.freeze?60:p.duel.wards.push?30:0):0;
-          const damage=Math.min(CLAP_DAMAGE,Math.max(0,p.hp-floor));p.hp-=damage;p.flash=.3;
+          const damage=Math.min(this.burstDamage,Math.max(0,p.hp-floor));p.hp-=damage;p.flash=.3;
           if(damage)p.depth=Math.max(p.finalBoss?.08:.02,p.depth-.12);
           const killed=p.hp<=0;this.score+=killed?(p.finalBoss?5000:p.boss?1500:150):damage?30:0;if(killed)this.kills++;
           impacts.push({id:p.id,aim:projectPlant(p),damage,killed});
         }
-        this.plants=this.plants.filter(p=>p.hp>0);events.push({type:'clap-impact',impacts});
+        this.plants=this.plants.filter(p=>p.hp>0);events.push({type:'burst-impact',impacts});
       }
     }
     if(this.mode==='survival'&&this.waveState==='break'){
@@ -202,7 +207,13 @@ export class GardenGame {
     if(this.hp<=0){this.finished=true;events.push({type:'finish'});}
     else if(this.mode==='survival'&&!this.plants.length&&this.toSpawn===0){
       if(this.wave===WAVE_COUNTS.length){this.finished=true;this.won=true;events.push({type:'finish'});}
-      else{this.waveState='break';this.breakRemaining=3.5;events.push({type:'wave-clear',wave:this.wave});}
+      else{
+        this.waveState='break';this.breakRemaining=3.5;events.push({type:'wave-clear',wave:this.wave});
+        if(this.wave%UPGRADE_EVERY===0){
+          this.upgradeLevel++;this.palm.upgrade(PALM_CAPACITIES[this.upgradeLevel]);this.breakRemaining=5;
+          events.push({type:'upgrade',level:this.upgradeLevel,multiplier:this.damageMultiplier,seconds:this.palm.maxEnergy});
+        }
+      }
     }
     return events;
   }

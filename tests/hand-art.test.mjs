@@ -20,3 +20,16 @@ test('both mirrored fingertips and bullet origins point at the aim across screen
     }
   }
 });
+
+
+import {burstHandPlacement} from '../dist/burst-art.mjs';
+import {BURST_CONTACT} from '../dist/burst.mjs';
+test('burst gloves meet exactly at their index tips and the energy origin across screen sizes',()=>{
+ for(const [w,h] of [[1218,694],[364,758]]){
+  const left=burstHandPlacement('left',BURST_CONTACT,w,h),right=burstHandPlacement('right',BURST_CONTACT,w,h);
+  assert.ok(Math.abs(left.tip.x-right.tip.x)<1e-8);assert.equal(left.tip.y,right.tip.y);
+  assert.equal(left.tip.x,w*.5);assert.equal(left.tip.y,h*.76);
+  assert.ok(burstHandPlacement('left',0,w,h).tip.x<left.tip.x);
+  assert.ok(burstHandPlacement('right',0,w,h).tip.x>right.tip.x);
+ }
+});

@@ -8,7 +8,7 @@ The project author supplied the finger-gun concept, gameplay changes, visual ref
 
 **PSYCHOFINGER.** The supplied screenshot and [video page](https://www.bilibili.com/video/BV1vtpY6kETr/) were references for the foreground hand silhouette and proportions. The hands were redrawn as white gloves with coloured cuffs. The pose is based on that reference, rather than presented as a wholly independent design. The screenshot and original animation are not used as textures; recoil and return movement are implemented in this project.
 
-The open-palm and clap illustrations also follow reference images supplied by the author. The runtime drawings are Canvas/SVG paths in `hand-art.mjs`, `palm-art.mjs` and `clap-art.mjs`. The garden, plants, particles and interface icons are drawn in code. Fonts come from the operating system.
+The open-palm and fingertip-touch illustrations also follow reference images supplied by the author. The runtime drawings reuse Canvas/SVG paths in `hand-art.mjs`, `palm-art.mjs` and `burst-art.mjs`. The garden, plants, particles and interface icons are drawn in code. Fonts come from the operating system.
 
 ## Software and model
 
@@ -19,7 +19,7 @@ The open-palm and clap illustrations also follow reference images supplied by th
 - **Audio preparation:** FFmpeg with libmp3lame; the optional script is `scripts/prepare-audio.py`.
 - **Tests:** Node.js's built-in test runner. Browser inspection tools were used during development, not as a game dependency.
 
-No course-example code was copied. The game rules and the finger-lift, palm and clap handling were developed for this project with AI assistance.
+No course-example code was copied. The game rules and the finger-lift, palm and fingertip-touch handling were developed for this project with AI assistance.
 
 ## Audio
 
