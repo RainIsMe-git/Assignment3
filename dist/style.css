@@ -36,3 +36,6 @@ html[lang=en] h1{font-family:Georgia,serif;font-size:clamp(34px,4.5vw,70px);line
 @media(max-width:650px){.clap-hud{bottom:78px;max-width:55%;font-size:9px;min-width:130px;gap:3px}.clap-icon img{width:27px;height:33px}}
 
 .clap-hud:hover{transform:translate(-50%,-2px)}.clap-hud:active{transform:translate(-50%,1px)}.clap-hud:disabled:hover{transform:translateX(-50%)}
+
+.clap-hud[data-ready=true]{animation:clap-window 1s ease-in-out infinite;bottom:100px}.clap-hud[data-ready=true] .clap-icon{animation:none}#swap-hands{margin-left:auto;margin-right:7px;font-size:17px;line-height:1}#swap-hands[aria-pressed=true]{background:#d3b7dc}@keyframes clap-window{50%{opacity:.38;box-shadow:0 0 26px #c68fe8cc}}
+@media(prefers-reduced-motion:reduce){.clap-hud[data-ready=true]{animation:none}}

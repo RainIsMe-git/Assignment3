@@ -1,166 +1,78 @@
-# Garden Gunners · 指尖双枪：开发记录
+# Making Garden Gunners
 
-## 目标与设计
+## Starting point
 
-本项目使用真实摄像头手势控制第一人称双指枪，击退迎面而来的变异植物。用户要求单手和双手均可玩、抬指射击、不必精确瞄准，并采用参考《茶杯头》的美式复古漫画风格。
+The first version was a gesture-magic game. I wanted something more immediate: point a finger, lift it, and see a shot hit an approaching plant. That became Garden Gunners, a first-person game with two finger guns and a retro cartoon garden.
 
-1. 当前只需自然伸出食指，其他手指不参与姿势分类。左右手各有独立触发状态，稳定后保持姿势蓄力，抬指发射，放回原位才能再次发射。约 1 秒 / 2 秒分别造成 2 / 3 点伤害。下文按时间保留较早的严格手势方案及放宽原因。
-2. 自动锁定最迫近的植物，按目标左右位置分配双枪。场上有存活目标时开火必定命中；目标旁只保留准星。
-3. 花朵、蘑菇和较耐打的仙人掌持续逼近。命中会击退植物；保卫战包含 5 点生命、5 波 / 75 秒挑战、胜负结算与再来一局。
-4. 场景与角色采用旧纸色、粗墨线、橡皮管四肢、白手套和漫画爆字。参考图仅用作美术方向，没有拷贝角色或素材。
-5. 提供不扣血练习和无需摄像头的鼠标 / 键盘试玩。加载可取消，出错可重试；失去识别自动暂停，退出释放摄像头。
-6. Windows 双击启动器自动打开浏览器，复用同目录已运行的实例，并在端口被占用时选择其他端口。游戏标识与健康检查均使用 Garden Gunners 名称。
+The intended player is someone trying a camera game at their desk, not someone willing to practise precise hand tracking. This shaped the main decision: the game chooses the target. The player's job is to decide when to fire, whether to wait for a stronger shot, and when to use a palm to make space.
 
-## 用户反馈与迭代（2026-10-30）
+## The interaction I worked on most
 
-### 手势与图示
+The original finger-gun pose was too strict. It checked several fingers even though the action I cared about was the index finger lifting. Pointing toward the camera also hides the finger's length, so a pose that looked right to the player could fail the screen-space checks.
 
-用户明确要求指枪必须伸出拇指和食指，也允许中指一起伸出；其余指头收起。识别器检查拇指伸展与分离、无名指/小指弯曲，并区分 two/three 两种姿势。姿势切换会重新建立触发基线，不会因此误射。
+I changed the input to use three-dimensional hand landmarks where available and relaxed the unused fingers. Each hand has its own charge and trigger. A lift fires once; lowering the finger makes the next shot possible. Holding a raised finger does not keep shooting. Later changes added a faster trigger path and stopped smoothing away short flicks.
 
-用户希望界面更加图形化。首页使用两种指枪 SVG、抬指动态图示和图标按钮；详细解释与键盘说明放在问号弹窗，游戏内保留简洁生命与分数显示。
+Aiming needed a bigger change. Trying to move a camera-tracked cursor onto a plant made the hands leave the frame and sometimes encouraged crossing the arms. Automatic targeting removed that task. The two foreground gloves and target reticles still show where shots will go.
 
-### 美术参考
+For feedback, I added charge light at the fingertip, different shot sounds, a visible projectile, a damage bar and knockback. The shot starts at the drawn fingertip. Its impact animation and sound arrive together, rather than making the enemy react before the bullet gets there.
 
-用户认为生成的水彩花园“AI 味太重”。该尝试使用内置 imagegen，采用 1930s watercolor garden clearing 的宽画幅提示；结果过于写实、密集且含不合适的风景细节，被明确拒绝。该图不在仓库中，游戏不引用它。
+## Testing and what changed
 
-随后检索并查看 Studio MDHR 官方 Cagney Carnation 截图，并阅读背景画师 Caitlin Russell 的多层背景说明。修订方向为低对比柔和背景、鲜明动画角色、墨线轮廓、轻度色彩/纸纹/胶片处理。最终由 backdrop.mjs 程序化分层绘画，不把游戏截图作为素材；滤镜可独立关闭。
+I asked another person to try the experience before explaining the controls. I also played successive versions myself and used those sessions to identify problems. The feedback recorded during development is collected in [PLAYER_FEEDBACK.md](PLAYER_FEEDBACK.md).
 
-### 手套姿势与方向可读性
+The first test feedback was that gesture recognition felt unresponsive and that the game lacked sound and enough feedback. I relaxed the gesture rules, added music and shot audio, and made charging and hits easier to see. This gave the action more visible stages, but it did not solve every tracking problem.
 
-用户指出手指姿势别扭且无法判断朝向。重画侧面指枪：前伸的圆头食指、竖起的拇指、逐层握回的指节、白色手套与短袖口。hand-art.mjs 是实时 Canvas 手套及说明 SVG 的共同图形来源，保留两种允许的手势。
+The hand graphics took several attempts. Early versions looked awkward and did not clearly point into the scene. I used the supplied PSYCHOFINGER reference for the pose and proportions, then redrew the hands as cream-coloured gloves. A generated garden background was rejected for looking too much like an AI image. I replaced it with a quieter background drawn in layers with Canvas.
 
-大手随瞄准位置轻移，小手沿同一朝向放在落点标记后方；青色/珊瑚色区分双枪，细引导线连接指尖与落点。弹道从实际指尖出发，沿食指方向飞出后柔和转向辅助命中的植物；指尖增加短促枪焰。边缘瞄准时移动手腕位置，减少翻转和裁切。
+Testing also changed the combat. The early game felt too difficult, so I lowered plant health. Later, the last waves became too easy, so I added five waves and a final boss. That made the final encounter too abrupt: the queen attacked while the player was still surrounded by ordinary enemies. She now waits behind them until they are cleared, then gives a longer warning before each attack.
 
-## 技术验证（2026-10-30；新增检查见文末）
+The first reflected thorn orb disappeared when the counter succeeded. Although damage was applied, the response did not look like a reflection. It now travels back to the queen and damages her on arrival. This makes the connection between the two-palm action and the result visible.
 
-- 21 项自动测试覆盖两种指枪形状、错误伸指拒绝、镜像/旋转/缩放、姿势切换、相对抬指、双手独立开火、抖动、保持抬起不连发、回落重新装定、跟踪中断、辅助瞄准、击退、伤害、暂停与结算。
-- 几何检查覆盖左右镜像、宽窄屏幕、四角瞄准及后坐位移下的指尖与发射起点一致性。
-- 浏览器检查鼠标左右键与空格双枪、命中计分、保卫战入口、暂停冻结、指南暂停/继续、滤镜切换、桌面及 390px 布局；无水平溢出或页面错误。截图位于 docs/。
-- 摄像头授权等待超时后能显示错误并切换鼠标模式。该检查不代表真人手势识别成功。
-- 保卫战中植物持续逼近并扣除五点生命，正确进入失败结算；重新开始会重置生命与计时。
+Single-palm time stop also felt unhelpful. It now pushes slowly, while two palms push faster. Both use purple effects so they look like different strengths of the same action. The tutorial's two-palm step now takes roughly two seconds and keeps progress through short tracking gaps.
 
-真实双手摄像头的姿势舒适度、识别成功率、左右手交叉与光照容忍度仍需实际试玩。自动和合成测试不能代替真人验证。
+The combo reward needed another change. Six seconds of explosive bullets was too strong, so I replaced it with one full-screen clap attack. The first clap version passed controlled-input checks but failed in actual play: bringing the hands together could hide the landmarks needed to recognise it. I relaxed the finger-shape check and let the detector keep an approach through a brief missing frame. The latest UI also shows a flashing eight-second opportunity only after a 20-hit milestone, rather than leaving a permanent button on screen.
 
-## 第一次试用：提交者提供的反馈
+The latest test screenshot showed the physical right hand marked teal/left, even though the controls felt usable. I corrected the camera-label conversion before both drawing and firing, and added a preview-level swap button. This still needs another camera test; changing a label alone is not enough evidence that it feels right.
 
-2026-10-31 整理记录（记录日期不等同于试用日期）。在被询问课程要求的他人试用时，提交者补充：“第一次测试：手势识别不灵敏、缺少音效和充分的反馈，于是做了现在的优化”。这是提交者转述的真实反馈，不是自动测试推测出的结果；未收集姓名、录像或个人信息。
+## One piece of code I can explain
 
-| 观察到的问题 | 设计决定与实现 |
-| --- | --- |
-| 手势识别不灵敏 | 移除其他手指的伸展分类，只追踪食指上抬；降低抬指阈值、加入短暂遮挡容忍，允许食指正对镜头 |
-| 缺少音效 | 加入背景音乐、三档枪声、随蓄力增强的循环声音与满蓄力提示 |
-| 反馈不充分 | 自动锁定准星、蓄力环和伤害等级；三档弹丸、枪焰、命中爆字、冲击圈与击退；弹丸抵达时显示受击 |
+The firing loop runs through four files:
 
-反馈尚未说明对方在讲解前的首个动作、具体犹豫过程、设备或试用日期，这些细节不作推断。新版尚无第二次真人试用结论，因此不宣称识别成功率或体验已经得到证实。后续复测可重点观察：是否无需讲解就会抬指开枪、能否区分三档威力、失去追踪后能否自行恢复。
+1. `tracking.mjs` matches observations to the two hands and sends the index pose to `GunTrigger` in `core.mjs`.
+2. `GunTrigger` compares the lift with the hand's recent resting pose. A deliberate rise produces one shot event and starts a latch until the finger lowers.
+3. `GardenGame.shoot()` chooses an attackable plant, calculates `1 + charge * 2` damage and updates health, score and combo.
+4. `app.mjs` sends the result to `renderer.mjs` and `audio.mjs`. The player sees the shot, hears the hit and can decide whether to fire again or charge longer.
 
-## AI 使用
+The clap follows the same idea, but watches the distance between two hands over time. It requires an approach from a separated position, not just a still image of overlapping hands. The skill has to be available, and its damage is applied once at the animation's contact frame.
 
-OpenAI Codex 协助规则设计、MediaPipe 实现、程序化图形、测试、问题排查和文档整理。用户提供方向与参考，并提出手势、画面、界面和手套的具体修订意见；开发对话中的反馈与上方单独记录的首次试用反馈分开呈现。
+## Handling an interruption
 
-保留了自由练习和鼠标替代输入；按用户要求实现双指枪与宽容辅助瞄准，撤下被否定的生成背景，并重新绘制手套。提交者仍需审阅和理解实现、进行真人测试，并如实保留 AI 使用披露。参考来源见 CREDITS.md。
+Camera permission is an ordinary point of failure. The game offers retry and mouse play when permission is denied or the model cannot load. If both hands leave view during play, the game pauses. I removed the full-screen blur from that pause because it hid the very preview needed to recover. Home stops the camera, and resetting a game clears stored input so an old gesture cannot fire on return.
 
-## 仓库与运行
+## Where AI helped, and where I changed it
 
-源码在 [RainIsMe-git/Assignment3](https://github.com/RainIsMe-git/Assignment3) 的 main 分支。使用 README.md 中的本机启动方式；源码仓库不等于已部署的游戏网站。
+I used **OpenAI Codex** to help write the JavaScript, gesture rules, Canvas drawings, tests and documentation, and to inspect problems in the browser. I supplied the gameplay direction, visual references and repeated test feedback.
 
-提交课程前可补充上述首次试用的具体行为，并复测新版摄像头、音效与中断恢复；最后将公开仓库链接提交到 Canvas。
+I kept the mouse/keyboard alternative proposed during development. It makes the same interaction available when the camera or model is unavailable, which also makes the project easier to try for marking.
 
-## 自动锁定、蓄力与双语（2026-10-31）
+I rejected an **imagegen** garden draft because it was too detailed and did not fit the cartoon characters. I also changed several AI-assisted design and code choices after testing: strict finger checks became more forgiving, explosive shots became a clap, and the queen's simultaneous attack with the crowd became a separate encounter. The first attempt at a hand-label fix was not reliable in real use, despite passing synthetic tests.
 
-用户实测反馈难瞄准、双手需要交叉且容易丢失识别。本轮取消手掌位置瞄准，改为有目标时自动命中；两枪按目标屏幕左右分配，并在另一枪击杀后重新选择存活目标。目标上只画准星，保留前景双手。教学只展示一种姿势，但识别和运行时手套继续兼容三指。
+## Checks and remaining work
 
-加入最多 2 秒的独立蓄力：伤害从 1 升至 2、3，怪物生命设为蘑菇 2、花朵 3、仙人掌 4。指尖聚光、环形充能、满蓄力金色光效、粗弹道、强化枪焰与爆字反馈蓄力。短暂遮挡不累加蓄力；手回来重新确认基线，长时间离场和手动暂停清除蓄力。两手匹配改用相邻帧位置连续性，增加约 750ms 的宽容缓冲和轻微弯指容差，双手离场约 2.2 秒才暂停。
+The current automated suite has 84 checks for rules, gesture sequences, pauses, audio and both interface languages. Browser checks use mouse input or clearly labelled synthetic landmarks. They help catch errors such as double-triggering a clap or dealing reflected damage too soon, but do not measure camera comfort or recognition accuracy.
 
-按浏览器首选语言选择中文 / 英文，其他语言默认英文；手动选择会保存。翻译覆盖教学、状态、帮助、暂停、结算、相机加载与失败提示，以及无障碍标签。
+Recent development images show the [clap impact](docs/clap-impact.png) and [returning thorn orb](docs/orb-return.png). They are labelled as simulated input. Player camera images are not included in the repository.
 
-同时补完启动器的端口修复：Windows 拒绝绑定 4173 时不再提前退出，继续尝试其他端口；标准范围全部不可用时由系统分配空闲端口。本机复现并确认可在 4174 启动。
+For the latest revision, I checked that the clap prompt stays hidden before the reward, appears with an [eight-second countdown](docs/clap-window.png), and disappears when time runs out. A simulated camera clap triggered the area hit and consumed the reward. The hand-swap button also changed state correctly, with no browser errors in this check.
 
-验证包括自动规则、合成关键点跟踪、双语文本完整性，以及浏览器鼠标模式的空白处开枪命中、独立蓄力、英文切换和暂停重置。真实摄像头识别成功率仍需真人验证，不把合成检查当作人体试玩。
+The main work left is to try the revised clap and hand mapping again with a real camera. The latest feedback is useful precisely because it showed that the previous checks were not enough. Balance may also need another pass now that the continuous area-shot reward is gone.
 
-## 镜头正面指枪与第一视角手套（2026-10-31）
+An unauthenticated GitHub API request returned HTTP 200 and confirmed that the repository is public on 1 November 2026. The public repository has the source, assets and successive commits. The assignment asks for its URL to be submitted on Canvas; pushing to GitHub does not submit it there. Media sources and the audio-distribution permission confirmed by the project author are recorded in [CREDITS.md](CREDITS.md).
 
-用户进一步指出实际玩法是指尖朝镜头，而旧规则和手套仍偏向侧视。检查发现 worker 只传递图像关键点，未传递模型已有的 `worldLandmarks`。本轮接通世界坐标，使用三维指骨伸展和弯曲判定两指 / 三指枪；深度足够时允许食指投影几乎为零，回退数据修正镜头宽高比。抬指以三维食指轴线的向上分量判定，坐标来源改变时重新校准，避免假开枪。未更换或训练模型；模型完全检测不到手时，规则仍无法凭空恢复关键点。
+## 中文简要对照
 
-前景手套独立重绘为手背视角：宽手腕从画面下方进入，指尖向远处收窄，收拢的手指层叠，左右拇指在内侧；双手轴线指向锁定目标，指尖光效和子弹使用同一坐标。教学侧面图仅解释伸指组合，中文 / 英文帮助明确说明指尖朝镜头，无需侧手。
+项目从手势魔法改为第一人称双指枪，核心是“抬指输入—命中植物—声音、血条与击退反馈”。我让另一位人在未听讲解前试玩，也持续自己试玩并记录问题。反馈推动了宽松识别、自动瞄准、音效、白手套、波次、女王以及拍手技能的调整。
 
-38 项自动测试通过；新增合成三维测试覆盖镜头正向、两种手势、镜像、不同宽高比、前向抬腕、双手齐射、坐标切换和非指枪反例。另检查浏览器中的前景透视、蓄力和发射反馈。没有以真人摄像头实测数据确认成功率，不将合成测试视为真人体验结论。
+过程并非每次修改都成功：左右手仍出现过混淆，爆燃过强，女王与小怪同时进攻太难，拍掌在真实使用中也曾无效。最新改动放宽拍手遮挡容错，并把提示改为 20 连击后出现的 8 秒限时机会。新版本仍需实际复测。
 
-## 宽松抬指输入与清晰恢复预览（2026-10-31）
-
-用户继续反馈难以识别，并提供 PSYCHOFINGER 截图与 B 站链接，要求主要判断抬指动作。本轮移除拇指、中指、无名指和小指的硬性姿势门槛；只要食指可辨认即可蓄力，包括其他手指放松、张开或拇指弯曲。抬指阈值从 0.24 降至 0.16，增加轻量平滑，允许从最高点回落 0.14 后再开枪；中指姿势切换不再重置蓄力或触发基线。握紧食指、静止抬指、微抖动和遮挡后重新出现仍不会连续误射。
-
-根据用户截图重画连续手掌轮廓、竖拇指、圆润前伸食指及层叠三指，保留奶油白手套、粗墨线和复古配色。加入独立双手轻微待机、开火上扬后坐、回落与星状枪焰；减小蓄力光团，避免遮住指尖。B 站页面在工具中超时，未声称完整观看视频；动态效果为根据用户需求自行实现，未提取原游戏素材。
-
-识别丢失时，暂停改为顶部小卡片，移除背景遮罩和模糊；摄像头预览放大并置于提示之上。通过隔离的模拟输入页验证：弯曲拇指能开枪、丢失时暂停且预览清晰、回到稳定追踪后继续。模拟页只画测试网格与关键点，不访问真实摄像头；`docs/tracking-recovery.png` 是明确标注的模拟检查画面。39 项规则测试通过，真实摄像头成功率仍需真人验证。
-
-## 固定指枪轮廓、声音与分档反馈（2026-10-31）
-
-用户指出抬食指会被画成伸中指。本轮彻底删除运行时的 two/three 分类及其美术分支：中指尖的位置不改变识别结果、蓄力或手套。仅保留食指追踪；中指伸出也不会被拒绝。新的回归测试直接改变中指关键点并验证输出不变。
-
-用户否定了较窄的手掌和像椭圆堆叠的卷指，要求直接贴近 PSYCHOFINGER 截图下方双手。最终按参考的轮廓比例重画宽手腕、厚拇指、斜向前伸食指和三条连续卷指，改为奶油白手套、三道布缝与复古袖口。双手镜像后指向各自的自动目标，开火时上扬并回落；弹丸起点使用同一个指尖坐标。图形仍是可编辑的 Canvas 路径；造型来源在 CREDITS.md 中明确注明。
-
-用户提供了四份 WAV。完整背景乐压缩为 MP3，三份激光录音各截取一个单发用于 1 / 2 / 3 点伤害；较强录音的一段经倒放、滤波和边缘淡化制作蓄力循环。每只手独立控制蓄力音高和左右声像，蓄满仅提示一次。音乐默认在点击开始后播放；暂停、静音、退出及结算清除全部声音，继续时恢复音乐位置。加工过程保留在 scripts/prepare-audio.py，游戏不依赖 Python 或 FFmpeg。
-
-视觉反馈按伤害分为青绿小弹丸、金色拖尾弹和带轨道环的橙色能量弹。枪焰、命中爆字、伤害数字、碎叶数量和冲击圈逐级加强。核心规则先结算，绘制层暂留受击前的植物，待子弹抵达后显示受击和消失；声音与动画共享飞行时间。
-
-验证：46 项自动测试通过；浏览器确认五份真实 MP3 成功解码，背景乐只占一个播放源，双枪蓄力增加两个独立播放源，开火后暂停会清除音乐、蓄力和待播受击音。实际鼠标模式开火更新分数，左右蓄力独立；新手套、弹丸飞行帧与三档命中帧经过画面检查，检查过程中未见页面错误。上述音频检查验证解码及播放生命周期，不冒充人工听感评测。docs/gameplay.jpg 为实际鼠标练习画面；临时分档检查页仅为绘制验证，未作为真人试玩证据。
-
-按“作业要求”补充了目标用户、清晰启动说明、无需模型的替代演示、声音来源、首次试用反馈与改进、AI 保留/拒绝建议，以及英文 docs/ASSESSMENT.md，方便检查输入—响应—反馈和对应代码。仍需由提交者在 Canvas 提交仓库网址；没有代提交，也没有虚构新版真人复测结果。
-
-## 玩家反馈持续记录：左右枪、速射与波次（2026-10-31）
-
-玩家明确授权从本轮开始将每轮反馈记入作业材料。新增 [PLAYER_FEEDBACK.md](PLAYER_FEEDBACK.md) 逐项对应真实反馈、修改和验证情况，并在 AGENTS.md 中保留持续记录要求。
-
-本轮发现初始左右枪归属依赖屏幕位置，因此玩家单手放在画面中间或另一侧时会分错枪。现在对原始未镜像摄像头帧的模型标签进行左右修正，以高置信度真实手别确定首次归属；持续位置匹配则避免偶发标签翻转影响已经蓄力的手。标签较弱时保留位置回退。预览骨架颜色也与该对应关系同步。
-
-快速动作容易漏判有两项代码原因：旧采样间隔 65ms，且每次回落需等冷却结束再稳定 120ms。现改为请求最高 60fps、16ms 轮询最新帧，保持单帧推理避免旧帧堆积；触发器直接看未平滑的食指上抬，增加速度与位移联合判定。首次进入仍需稳定建立基线，后续回落即可重新准备，单枪冷却 110ms；应用层不再重复过滤相机触发器已接受的射击。保持抬指不动、抖动、重新入镜仍不补发或连发。完全没有被摄像头或模型捕获的动作无法事后恢复，真实识别速度待玩家复测。
-
-蓄力新增明亮核心、向内汇聚粒子、双层反向能量环和满蓄力电弧，强度与色彩随三档伤害变化。减少动态效果设置下保持静态等级提示。保卫战由限时生存改为五波敌群：5、8、11、14、18 只，较大波次分批补齐，场上同时最多 16 只，波间休息 3.5 秒。界面中英双语均显示波数、剩余敌人和下一波倒计时，清完最终波次获胜。
-
-验证：53 项自动测试通过，包括完整五波通关、每波精确数量、补兵未到不能提前清波、暂停冻结休息时间、连续 120ms 间隔抬落，以及在画面另一侧首次出现的左/右手和标签翻转。浏览器确认新的蓄力画面、第一波到休息再到第二波、失败结算及重玩重置；没有页面警告或错误。docs/waves-charge.jpg 为实际鼠标模式截图。这些开发检查不替代玩家对新版的真人摄像头复测，也不预先声称玩家满意。
-
-## 颜色反向的复测纠正与掌心控制（2026-10-31）
-
-玩家随后用截图指出左右颜色仍然相反，否定了上一轮“交换标签即可修好”的假设。旧版 Hands 文档不能直接证明当前 Tasks Vision 输入路径需要交换；本轮撤销额外交换，并统一预览和射击的最终身份。预览不再独立依据原始标签取色，左右骨架附带经过镜像补偿、可正常阅读的 L/R 标记。历史记录保留原判断，本节记录纠正，详见 [第 2、3 轮玩家反馈](PLAYER_FEEDBACK.md)。
-
-新增停止手势：四指明显伸展、手掌平面朝向镜头，稳定 120ms 后生效。拇指位置保持宽松，不严格区分掌心和手背。该动作优先于抬指，立即重置该手的射击状态；切回指枪重新建立基线，避免把姿势变化误当开火。单掌令怪物减速 68%，另一只手可射击；双掌减速 85% 并持续后推。两手共用 5 秒能量，双掌耗能 1.6 倍；所有停止手势放下后每秒恢复 0.65，部分能量可复用。张掌丢失 150ms 后即释放，避免离场继续消耗。白手套改为张掌外形，青绿 / 紫色场域波纹区分减速与推退，界面仅增加紧凑能量条及短状态。
-
-保卫战五波扩为 6、10、16、22、30 只，场上最多 18 只，继续分批补充和保留 3.5 秒休息。最终波加入大型紫色花王：48 生命、独立血条、皇冠、半血加速、较强击退抗性；接触扣 2 点生命后后退继续进攻，不能靠让 Boss 走过来消失而通关。鼠标模式新增 Q / E 按住及左右掌按钮，中英文界面和帮助同步更新。
-
-验证：60 项自动测试通过，覆盖精确能量预算、耗尽不自动回充、部分能量再用、混合双手、姿势切换与丢失、推退方向、Boss 接触后继续存活及击杀胜利、预览身份一致。浏览器实际鼠标按钮验证消耗与独立蓄力；隔离模拟输入页检查一手掌心另一手射击、双掌波纹、Boss 与血条。模拟页不访问真实摄像头，检查图明确带 SIMULATED INPUT 标记，不作为真人识别证据。真实左右手归属、停止姿势与新增难度仍需玩家继续试玩反馈。
-
-画面证据：[双掌与 Boss 模拟检查](docs/palms-boss.png)。另检查新增 HUD 在桌面与窄窗口的布局、英文状态与血条文案；浏览器检查未见警告或错误。
-
-随后根据玩家第 4 轮反馈，将掌心操作说明直接放到首页：白手套图示区分单掌减速与双掌推退，一行中英文文字说明保持朝前、共享能量与放下回充。通过现有双语检查并在浏览器检查首页，保留图形为主的说明方式。玩家将稍后测试，不记录尚未发生的复测结果。
-
-## 时停、20 连击爆燃与逐步训练（2026-10-31）
-
-玩家反馈首页说明过多、难度偏高及张掌造型不佳，并要求训练自动衔接关卡。按 [第 5、6 轮反馈](PLAYER_FEEDBACK.md)，首页缩为三张等宽技能图卡。张掌根据新参考画为手背白手套：指头并拢、圆指尖、竖布缝、拇指向画面内侧；左右整体镜像但袖口身份不互换。
-
-普通植物降为 1 / 1 / 2 血，Boss 从 48 降至 20 血。单掌改为真正冻结敌人位移、动作时间和补兵倒计时；双掌推力从每秒 0.16 深度提高至 0.48，Boss 使用 70% 推力。能量上限 10 秒，双掌仍耗能 1.6 倍，放下后每秒恢复 1 秒，部分能量可复用。玩家将拟定的爆燃阈值从 8 改为 20：每 20 次命中触发 6 秒范围子弹，触发枪立即生效；范围以命中前的位置计算，主目标与溅射各结算一次，连击只按开枪命中计数。受伤清空连击，暂停冻结爆燃倒计时。橙色指尖火焰、范围圈及进度条提示技能。
-
-新增独立的 tutorial.mjs 状态机：开火两次 → 满蓄力 → 单掌时停 → 一手停一手射 → 双掌推退 → 松手回能 → 20 连击范围爆燃。每次只显示当前动作说明，成功后短暂确认；完成后自动进入第 1 波并重置资源。练习目标会补充且不扣生命；长时间不动作或暂停不能自动跳课。已有经验者可跳过教学。键盘 Q / E 与射击同帧时也使用当前掌心状态，避免教学漏判混合操作。
-
-67 项自动测试覆盖全部既有规则及新增血量、冻结动作 / 补兵、推力、20 连击范围结算、效果刷新 / 到期、训练动作顺序及完成信号。真人摄像头成功率与新难度仍需后续实际反馈。
-
-浏览器检查：实际键盘走过开火、蓄力、时停和配合射击；隔离的模拟按键页走完全部七步，显示 `fire → charge → freeze → mixed → push → recharge → burst → WAVE 1`，第一波生命、能量、分数、连击均重置。另验证跳过教学直接开战，检查中英界面、窄窗口及桌面排版。模拟页最初的按键投递目标错误在检查脚本中修正；最终检查页未见警告或错误。手套和爆燃画面分别保存在 [tutorial-palms.png](docs/tutorial-palms.png) 与 [burst-shots.png](docs/burst-shots.png)，均带模拟输入标记；没有真人摄像头或识别成功率的测试结论。
-
-## 2026-11-01：十波关卡、最终女王与教学耗能修复
-
-对应 [玩家反馈第 7 轮](PLAYER_FEEDBACK.md)。前五波保留，第六至十波增加为 34 / 38 / 42 / 46 / 50 只，普通怪逐步从 2–3 血提高到 4–5 血。第 5 波花王保留 20 血，第 10 波新增 80 血荆棘女王，以两种有预警的招式检查玩家是否掌握掌心能力：单掌打断孢子，双掌反推荆棘球。两重封印限制生命下限，避免单纯快速射击跳过机制；成功反制后开放 3.5 秒完整伤害窗口。原创紫红花瓣、叶披风和银色荆棘冠沿用现有 Canvas 画法。
-
-用户截图中，两只游戏手套已经张掌，能量却为 0.0 秒。由此定位到能量耗尽导致无推力，以及摄像头状态只按有效手数量显示“双枪”的误导；不据此认定手势模型没有其他识别问题。现状态明确区分张掌、混合操作和能量耗尽；掌心教学课程无限能量，回能课单独练习，短暂识别波动不立即清零进度。
-
-75 项自动测试通过，覆盖十波通关、普通怪生命上限、两个 Boss、女王预警与伤害、两种反制、封印不能被连射或单独反推绕过、暂停和空能量、教学推进与状态文案。浏览器使用隔离的模拟按键页，确认双掌反推使女王 80 → 72 血、封印 2 → 1 并显示输出窗口；单掌孢子反制成功；零能量推退课推进到回能课；检查中英文招式提示布局。检查脚本曾把波数设为 10 后再执行自增开波，导致测试页进入 11 波；已改为从 9 开始，该错误不在正式游戏路径中。未做真人摄像头复测或声称新版难度已经获得玩家认可。
-
-[女王招式画面](docs/thorn-queen.png)带有 SIMULATED INPUT 标记，仅为开发检查证据；没有把用户摄像头截图上传仓库。
-
-## 2026-11-01：一次性拍手冲击、连续生命与最终战节奏
-
-对应 [玩家反馈第 8 轮](PLAYER_FEEDBACK.md)。删除 6 秒持续范围子弹，20 连击改为储存一次拍手。识别分开且张开的双手向彼此接近，接触只触发一次；静态合掌、从遮挡中突然出现、普通指枪交叉不触发。仅对已快速接近到末段的双手允许短暂单手合并丢失。手套从两侧合拢、接触产生全屏波纹，再分开收回；伤害在接触帧结算，每个敌人 2.5，不刷连击，不绕过女王封印。鼠标 C / 下方按钮提供替代操作。拍手不加入强制教学。
-
-普通怪每波连续增血，初始 1 / 1.3 / 1.6，每波 +0.36，最高 5；蓄力从 1 连续增至 3。血量由小圆点改为绿条与金色掉血残影。单掌从时停改为每秒 0.14 深度缓推，双掌保留 0.48 强推，两者统一紫色效果，保留共用能量。
-
-最终女王先在更远处等待，不抢小怪的自动锁定；待补兵与小怪全部清完才开始 5 秒准备。预警 4.5 秒、攻击飞行 3 秒，反制保持缩短为 0.35 / 0.45 秒。反推球有 0.85 秒可见返程，命中才扣血并开放 4.5 秒输出窗口；仍需解开两重封印。双掌教学累计 1.2 秒有效动作加 0.5 秒成功提示，约 2 秒完成；短暂丢失不清零，删除爆燃课后共六步。
-
-80 项自动测试通过，覆盖连续伤害、十波通关、单掌缓推、拍手储存与一次性全屏结算、合掌不连发、末段遮挡、指枪不触发、女王等待与返程命中、教学容错。浏览器隔离检查页注入合成关键点，经实际 HandTracking → onHands → clap → 伤害结算链路成功触发；它没有使用真人摄像头。鼠标模式检查就绪提示、合掌动画和连续血条。返程期间女王仍为 80 血，恢复动画后变为 72 血；保存 [拍手冲击](docs/clap-impact.png) 和 [荆棘球返程](docs/orb-return.png)，两者都标注 SIMULATED INPUT。早期检查页未冻结准备场景导致等待期间被敌人击败，修正了检查场景的停帧方式，不作为正式游戏故障。真实拍手识别率、难度和美术接受程度待玩家复测。
+Codex 协助代码、美术路径、测试和材料；保留了鼠标替代输入，拒绝了不合适的 AI 花园图，并根据测试不断改动早期方案。自动测试和模拟输入记录放在此处，不混入玩家反馈表的效果栏。

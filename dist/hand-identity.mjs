@@ -1,4 +1,4 @@
-// Keep the current Tasks Vision camera path's identity. Mirroring the preview
-// in CSS changes screen coordinates, not ownership of a gun.
-export const physicalHand=label=>label==='Left'?'left':label==='Right'?'right':null;
+// Inference receives the unmirrored camera frame; the preview is mirrored only
+// in CSS. Convert the model label once, before preview and gun assignment.
+export const physicalHand=label=>label==='Left'?'right':label==='Right'?'left':null;
 export const HAND_COLORS=Object.freeze({left:'#367f7d',right:'#bd513c'});

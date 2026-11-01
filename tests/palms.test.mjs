@@ -8,7 +8,7 @@ import {HAND_COLORS} from '../dist/hand-identity.mjs';
 function palm(offset=0){
  const p=Array.from({length:21},()=>({x:.5+offset,y:.5,z:0}));p[0]={x:.5+offset,y:.75,z:0};
  for(const [i,x] of [[5,.40],[9,.47],[13,.54],[17,.61]])for(let j=0;j<4;j++)p[i+j]={x:x+offset,y:.5-j*.09,z:0};
- return {landmarks:p,handedness:offset>0?'Left':'Right',confidence:.98};
+ return {landmarks:p,handedness:offset>0?'Right':'Left',confidence:.98};
 }
 test('stop needs four extended fingers and a broad palm; a side-on palm and gun do not qualify',()=>{
  const hand=palm();assert.equal(readStopPose(hand.landmarks),true);

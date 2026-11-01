@@ -1,75 +1,96 @@
-# 玩家反馈与改进
+# Test feedback and changes
 
-从 2026-10-31 本轮开始，按玩家要求持续记录每轮反馈，作为作业的迭代证据。记录反馈、设计决定和实际验证；不将代码检查自动写成玩家复测结果。较早的反馈及首次试用记录见 [PROCESS.md](PROCESS.md)。
+These notes collect the feedback I sent while testing the game, including the early trial and later sessions. The effect column follows what happened in subsequent versions: some changes helped, some went too far, and some still need another try.
 
-## 第 1 轮 · 2026-10-31：左右手、快速射击与波次
+## Early tests: finding the right interaction
 
-| 玩家反馈 / 请求 | 本轮改动 | 验证与状态 |
+| Test feedback | Change | Effect |
 | --- | --- | --- |
-| “左手抬指头的时候游戏内总是会右手攻击” | 初次分配优先使用镜像修正后的真实左右手标签，不再仅按画面位置；后续用连续位置跟踪保持身份，避免单帧标签翻转换枪 | 合成测试覆盖左手出现在右半画面、右手出现在左半画面、双手检测顺序变化和标签翻转；真人复测待玩家反馈 |
-| “蓄力时候指尖再多做点蓄力特效……有点看不出来” | 加亮中心能量球，增加向内汇聚的粒子、反向旋转双环、金色 / 橙色分级与满蓄力电弧；保留减少动态效果选项 | 浏览器画面检查；可读性改善尚未收到玩家复测结论 |
-| “快速抬手射击……识别不到我的快速射击” | 摄像头请求最高 60fps，采样轮询由 65ms 调至 16ms；只保留一个处理中帧，避免积压。触发使用未平滑的食指数据，增加快速上抬判定，回落立即重新准备，冷却缩短至 110ms | 合成输入覆盖连续 120ms 间隔抬落、短促抬指、抖动不误发、保持姿势不连发；实际速度仍取决于摄像头帧率、推理速度和遮挡 |
-| “增加怪物波数概念……新一波怪物来袭时数量会比较多……节奏感” | 5 波依次 5 / 8 / 11 / 14 / 18 只，开波成组出现，较大波次分批补充；波间休息 3.5 秒，显示倒计时、波数和剩余数量，开波音效提示。完成第 5 波获胜，取消单纯存活 75 秒的胜利条件 | 自动测试完整清完 5 波，验证每波数量、补兵、休息、暂停冻结与胜利；难度平衡待玩家继续反馈 |
-| “从现在起，我的每轮反馈都可以记到玩家反馈里，作为作业的一部分” | 新建本文件，并在项目协作说明中保留持续记录要求 | 本轮已记录；后续按轮次追加 |
+| The gestures were hard to recognise, and the game lacked sound and enough feedback. | Relaxed the finger-gun rules; added music, shot sounds, charge light and hit effects. | Shooting gained a clearer visible and audible response. Recognition remained a recurring issue. |
+| Players point their fingers toward the camera, rather than showing the pose from the side. | Used three-dimensional landmarks and stopped requiring the thumb and middle finger to match a strict pose. | The intended gesture became more natural, although quick movement and occlusion still caused problems. |
+| Aiming was difficult and sometimes made the arms cross. | Switched to automatic targets and removed hand-position aiming. | This removed the need to chase targets with the hands. Later feedback focused more on firing and hand identity. |
+| The hands looked awkward, and their direction was unclear. The generated background looked too much like AI art. | Redrew the gloves using the supplied reference and replaced the generated garden with a layered Canvas background. | One redraw was described as a little better, but still ugly. The hand art needed several revisions rather than one successful replacement. |
+| The tracking-loss overlay hid the camera preview. | Removed the background blur and kept the preview visible. | Players can see the camera while adjusting their hands. |
 
-本轮没有收集或保存摄像头录像、参与者姓名或其他个人资料。
+## Round 1 — 31 October: hand identity, rapid fire and waves
 
-## 第 2 轮 · 2026-10-31：左右手颜色仍反向
-
-玩家再次提供截图并指出：“左右手是不是识别反了。颜色没对应。”这是对上一轮修复的实际反例，不能将第 1 轮的合成测试当作真人修复成功。
-
-检查发现上一轮套用了旧版 Hands 文档的左右交换假设；同时预览按原始模型标签取色，而射击按连续跟踪后的身份归属。现撤销额外交换，让摄像头骨架、可读的 L/R 标记、前景手套和射击共用最终身份及颜色：左青绿、右砖红。
-
-验证：合成数据覆盖首次左右分配、画面交叉、标签翻转，以及预览使用最终身份。模拟输入页面可见左右颜色与对应手套一致。这不是新一轮真人摄像头验证，实际对应关系仍待玩家复测。
-
-## 第 3 轮 · 2026-10-31：停止手势、共享能量与大 Boss
-
-| 玩家反馈 / 请求 | 实现 | 验证与状态 |
+| Test feedback | Change | Effect |
 | --- | --- | --- |
-| 掌心向前保持，怪物减速，满能量最多 5 秒；放下缓慢恢复，未充满也能使用 | 单掌减速 68%；共享能量上限 5 秒，以每秒 0.65 恢复，部分能量可用；空能量保持掌心不恢复 | 自动检查精确消耗上限、恢复、部分能量与暂停冻结；真人姿势舒适度待复测 |
-| 左右手共用能量，可一手停止另一手射击 | 张掌优先于指枪，停止手不射击；另一只手保持独立蓄力与开火；追踪丢失及时释放停止状态 | 自动检查手势切换不误发和左右独立操作；浏览器模拟左掌保持、右手抬指后击杀得分 |
-| 双手停止耗能更多，逐渐把怪物往后推 | 双掌耗能 1.6 倍、减速 85% 并持续推退；增加张掌白手套、紫色波纹和敌人脚下光环 | 自动检查双掌共享池与后退方向；浏览器模拟输入画面检查，非真人摄像头测试 |
-| 增加大 Boss，增加后续波次怪物数量 | 五波为 6 / 10 / 16 / 22 / 30 只；最后一波包含 48 生命花王，独立血条、皇冠、半血加速、击退抗性，接触扣 2 血后继续进攻 | 自动检查所有波数、Boss 不因接触消失、必须击杀才获胜；难度平衡待玩家试玩 |
+| Lifting the left finger sometimes fired the right gun. | Revised initial hand assignment and kept identities stable between frames. | Not solved by this first change: the next screenshot still showed mismatched colours. |
+| The charge effect was hard to notice. | Added a brighter core, inward particles, rings and full-charge arcs. | Charge levels became more visible on the fingertips. |
+| Fast shooting was often missed. | Reduced input delay, used the unsmoothed lift for firing and shortened the time before another shot could trigger. | The rules allow a faster rhythm, but the camera can still miss movement between frames. |
+| The game needed waves and larger groups to create a rhythm. | Replaced a timed survival goal with waves, grouped spawns and short breaks. | Waves became the basis of the game. Their difficulty still needed several adjustments. |
 
-界面与帮助同步提供中英文；鼠标模式可按住 Q / E 或能量条下的左右掌按钮。共 60 项自动测试通过。开发检查不代表玩家已经认可本轮手感。
+## Round 2 — 31 October: the colours still did not match
 
-## 第 4 轮 · 2026-10-31：首页补充掌心说明
-
-玩家要求“主页加一下掌心减速的说明，做好之后 push，我晚点再测”。首页增加复古白手套图示：单掌减速、双掌推退，并用一行文字提示掌心向前保持、共用最多 5 秒、放下回能；同步英文版，保留原有简洁指枪教学。检查首页布局与两种语言文案，双语检查通过。玩家明确表示稍后测试，本轮未收到真人复测结果。
-
-## 第 5 轮 · 2026-10-31：简化说明、降低难度与技能教学
-
-| 玩家反馈 / 请求 | 本轮处理 | 验证与状态 |
+| Test feedback | Change | Effect |
 | --- | --- | --- |
-| 首页文本太多，图形化并注意对齐 | 改为三张同宽、同高、基线对齐的开火 / 时停 / 击退图卡；详细机制移至逐项教学 | 浏览器检查首页；中英文键完整性检查 |
-| 有点难，怪物血量降至 1–2 格 | 普通花朵、蘑菇 1 血，仙人掌 2 血；Boss 单独从 48 降至 20 血 | 自动检查生命配置和完整波次通关；难度是否合适待复测 |
-| 单掌时停、双掌更强击退、能量 10 秒 | 单掌冻结敌人移动、动作与补兵；双掌推力提高三倍，Boss 仍有较小抗性；共用 10 秒能量，每秒恢复 1 秒，双掌耗能 1.6 倍 | 自动检查精确 10 秒预算、冻结时钟与补兵、推退位移、耗尽恢复 |
-| 连击达到一定数量触发限时范围子弹 | 增加爆燃进度、6 秒效果与范围伤害，触发弹立即生效；橙色指尖火焰和范围冲击圈 | 自动检查范围内 / 外、溅射不刷连击、时限、暂停与重置；最终阈值见第 6 轮 |
-| 张掌图像不美观，要参考两张图，第二张翻到手背，注意左右 | 重新画并拢圆指、宽手背、三条竖布缝、短拇指和袖口；左手拇指朝右、右手拇指朝左，青绿 / 砖红身份保留 | 用同一套路径生成首页图示与运行手套；画面检查不代表玩家认可美术 |
-| 开始训练时逐个教技能，结束自动进正式关卡 | 七步动作教学，每步完成才推进；最后自动进第一波，重置生命 / 能量 / 连击；保留跳过教学 | 自动检查顺序、实际动作、暂停不推进、完成标记和正式关卡重置；浏览器走查 |
+| The screenshot still appeared to show reversed left/right colours. | Removed an extra label swap and made preview markers and shooting use the same tracked identity. | The preview and game used one mapping, but later testing again showed a physical right hand labelled left. This was not a complete fix. |
 
-## 第 6 轮 · 2026-10-31：爆燃阈值统一为 20
+## Round 3 — 31 October: palms, energy and the flower boss
 
-用户对拟定的 8 次触发明确修正为“改为每 20 次吧，好记”。最终规则、教学及 HUD 统一为每 20 次命中连击触发 6 秒爆燃（20 / 40 / 60……）。范围伤害不额外计连击。测试验证第 19 次不触发、第 20 次触发、下一阈值刷新、超时结束和重开归零；未将尚未发生的真人试玩写为成功结果。
-
-## 第 7 轮 · 2026-11-01：后期难度、最终女王与张掌无效排查
-
-| 玩家反馈 / 请求 | 本轮处理 | 验证与状态 |
+| Test feedback | Change | Effect |
 | --- | --- | --- |
-| 后期有点简单，再加 5 波，怪物逐步增血但不超过 5 | 总共 10 波，后五波 34 / 38 / 42 / 46 / 50 只；普通怪由 2–3 血升到 4–5 血 | 自动检查完整十波、数量与生命上限；新难度是否合适待玩家试玩 |
-| 保留小 Boss，新增需要时停甚至推开的最终大 Boss | 第 5 波保留 20 血花王；第 10 波 80 血荆棘女王，孢子需时停、荆棘球需双掌反推；两重封印和短暂输出窗口 | 自动检查反制、护甲、封印不能被连射 / 单独反推绕过、暂停、受伤和胜利；浏览器模拟输入检查 |
-| 训练时举掌没有推开，摄像头文字显示“双枪” | 截图内双方手套已张开，但能量为 0.0 秒，符合能量耗尽状态；原摄像头文字只按有效手数量显示双枪。现分别提示掌心动作与空能量，掌心课程不限能量，回能独立教学；短暂识别波动保留进度 | 自动检查零能量课程恢复、回能课和提示映射；没有据此宣称真实识别完全无误，真人摄像头复测仍待进行 |
+| A stop gesture should slow enemies while the other hand keeps shooting. Both hands should share energy. | Added single-palm slowing with a shared five-second energy pool. | This added a second action to combine with firing. Later versions increased the energy and changed slowing to time stop, then to pushback. |
+| Two open palms should push enemies away more strongly. | Added two-palm pushback with faster energy use. | Pushback stayed in the game, but the player later wanted a stronger effect and shorter training. |
+| Add a boss and more enemies in later waves. | Added the flower boss and increased wave sizes. | The following feedback found the game too hard, so enemy health was reduced. |
 
-开发验证与用户反馈分开记录：75 项自动测试及浏览器模拟检查不代表玩家已经认可新版难度或完成真人复测。玩家截图未加入公开仓库。
+## Round 4 — 31 October: explaining palms on the home screen
 
-## 第 8 轮 · 2026-11-01：拍手技能、连续生命与更宽容的 Boss 战
-
-| 玩家反馈 / 请求 | 本轮处理 | 验证与状态 |
+| Test feedback | Change | Effect |
 | --- | --- | --- |
-| 爆燃超模，改成 20 连击后拍手一次全屏伤害；需要识别、下方图标、就绪提示与动画，不必加入教学 | 移除持续范围子弹；每 20 连击储存一次拍手，接触帧全屏 2.5 伤害，保留一发不叠加。增加分开到合拢检测、末段遮挡容错、合掌去重、白手套动画及 C 键替代 | 合成关键点与浏览器模拟输入走通实际输入链路；非真人摄像头成功率验证 |
-| 不要离散血格，要连续血量，初始低后期渐高 | 普通怪从 1 / 1.3 / 1.6 血起，每波 +0.36，最高 5；连续绿条和金色受击残影；蓄力伤害连续 1–3 | 自动检查小数伤害、逐波生命和上限；浏览器检查血条掉落 |
-| 单掌时停没用，改成较慢推退，紫色特效同双掌 | 单掌每秒推退 0.14 深度，双掌 0.48；紫色波纹统一；保留共用能量与另一手射击 | 自动检查两种速度、耗能及独立射击；同步中英文说明 |
-| 最后一关太难，Boss 更远、先小怪后 Boss；球要实际反推回身上，给更长反应时间 | 女王远处等待全部小怪清完；5 秒准备、4.5 秒预警、3 秒攻击飞行；反推有 0.85 秒返程，到达才扣血，反制保持缩短至 0.35 / 0.45 秒 | 自动检查等待与锁定优先、反制时序和命中；浏览器确认返程中 80 血、命中后 72 血 |
-| 双掌教学保持太久，希望约 2 秒 | 有效动作累计 1.2 秒 + 完成提示 0.5 秒，短暂中断 0.6 秒内不清零；移除爆燃课，共六步 | 自动检查推进与中断容错；实际动作舒适度待玩家复测 |
+| Explain the palm ability on the home screen. | Added palm drawings and short instructions. | The next feedback found the explanation too wordy. The layout was changed to three aligned picture cards. |
 
-80 项开发测试通过，不等于玩家已认可新难度或美术。参考图用于确定合掌视角；游戏手套为代码路径绘制。
+## Round 5 — 31 October: clearer teaching and easier combat
+
+| Test feedback | Change | Effect |
+| --- | --- | --- |
+| Use fewer words and align the home-screen diagrams. | Made equal-sized cards for shooting, one palm and two palms. | The home screen became less crowded; detailed instructions moved into training. |
+| The game was too difficult. | Lowered ordinary plants to 1–2 health and the flower boss to 20. | This went too far in later waves: subsequent feedback found the late game too easy. |
+| Make one palm stop time, strengthen two-palm push and allow ten seconds of energy. | Changed both palm abilities and enlarged the shared energy pool. | The stronger push remained useful as a mechanic. Single-palm time stop was later reported to feel unhelpful and was replaced. |
+| Add a combo reward with area-damage shots. | Added six seconds of explosive shooting at a combo milestone. | Later testing found the reward overpowered. It was eventually removed. |
+| Improve the open-palm gloves and teach skills one at a time. | Redrew the hand backs and added action-based lessons. | Teaching revealed another issue: a player could arrive at the push lesson with no energy. |
+
+## Round 6 — 31 October: a memorable threshold
+
+| Test feedback | Change | Effect |
+| --- | --- | --- |
+| “Make it every 20 times; that is easy to remember.” | Set the combo reward to every 20 consecutive hits. | The 20-hit count was kept even when the reward later changed from explosive shots to a clap. |
+
+## Round 7 — 1 November: more waves and the Thorn Queen
+
+| Test feedback | Change | Effect |
+| --- | --- | --- |
+| The late game was too easy. Add five waves and gradually increase ordinary health, up to five. | Expanded the game to ten waves and increased later health. | The longer game created more pressure, but the new final encounter became too difficult. |
+| Keep the small boss and add a final boss that requires palm abilities. | Kept the flower boss in wave five and added the Thorn Queen in wave ten. | The first encounter brought the queen and minions into the fight together, leaving too little room to react. |
+| Both palms were raised, but nothing moved; the preview said “dual guns.” | Separated palm status from gun status and made palm lessons use unlimited energy. | The screenshot showed zero energy even though both palms were recognised. The new status explains this better, but later feedback still found the push lesson too long. |
+
+## Round 8 — 1 November: clap attack and a slower final encounter
+
+| Test feedback | Change | Effect |
+| --- | --- | --- |
+| Explosive shooting was too strong. Replace it with one full-screen clap after 20 hits. | Added a stored clap, a lower-screen icon and a glove animation. | The next real test found that clapping had no effect. The first detector was not forgiving enough. |
+| Replace health pips with continuous bars and gradual health growth. | Added continuous health and charge damage, with a trailing damage bar. | The size of each hit is now shown as a change along the bar instead of a number of pips. |
+| One-palm time stop felt pointless. Make it a slower push, with purple effects. | Changed one palm to gentle push and kept two palms as strong push. | Both actions now communicate the same kind of force at different strengths. |
+| Put the queen farther back, let the player clear minions first, and show the orb travelling back when reflected. | Made her wait behind the minions, lengthened attack warnings and delayed reflected damage until the orb reaches her. | The fight is split into a crowd phase and a boss phase. The return animation makes the counter's result visible. |
+| The two-palm lesson took too long; about two seconds would be enough. | Shortened the completion sequence and kept progress through brief tracking gaps. | The lesson now needs about two seconds of steady input rather than restarting immediately after a small interruption. |
+
+## Round 9 — 1 November: feedback on the submission materials
+
+| Test / review feedback | Change | Effect |
+| --- | --- | --- |
+| Make the materials English-first and less mechanical. Replace “verification and status” with “effect.” | Rewrote the documents around the idea, decisions and actual test feedback. Kept code checks in PROCESS instead of every table row. | The feedback record now shows where a change helped and where later testing contradicted it. |
+
+## Round 10 — 1 November: clap recognition and hand labels again
+
+| Test feedback | Change | Effect |
+| --- | --- | --- |
+| The teal marker was on the physical right hand, although operating the game seemed to feel right. | Corrected the label conversion before both preview and controls; added a ↔ button to swap the mapping if needed. | The earlier mapping still had a real mismatch. This revision gives the player a way to correct the controls, but its default needs another camera try. |
+| Clapping had no effect even though it was ready. | Relaxed the open-finger check and allowed the approach to continue across slower frames and brief overlap-related missing data. | The previous version did not work reliably in this test. The new tolerances address that failure; actual improvement needs another play session. |
+| Show a flashing, limited-time clap prompt only after the combo requirement is reached. | Replaced the permanent lower-screen indicator with an eight-second flashing opportunity. It disappears after use or expiry. | The screen is quieter outside the opportunity, and the prompt now tells the player when to act. |
+
+## 中文简要对照
+
+所有记录均来自测试中提出的问题。早期重点是识别迟钝、缺少音效反馈、难瞄准以及手套不好看；随后转向左右手对应、快速射击、波次和难度。
+
+几次修改的效果并不理想：第一轮左右手修复后颜色仍不对；主页说明后来被认为太多；降低血量后后期又太简单；爆燃太强；加入女王后最后一关又太难；第一版拍手在真实测试中没效果。最新一轮放宽拍手识别，并将提示改为达成 20 连击后闪烁 8 秒，补充左右手交换按钮。效果是否足够好，继续根据下一轮测试反馈更新。

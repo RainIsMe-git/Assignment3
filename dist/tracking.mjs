@@ -5,12 +5,13 @@ import {readStopPose} from './palm-control.mjs';
 export {physicalHand} from './hand-identity.mjs';
 const sides=['left','right'];
 export class HandTracking {
-  constructor(){this.clapDetector=new ClapDetector();this.slots=Object.fromEntries(sides.map(side=>[side,{trigger:new GunTrigger(),pose:null,anchor:null,lastValid:-Infinity,lastStrict:-Infinity,lastSeen:-Infinity,visible:false,stopSince:null,stopping:false}]));}
+  constructor(){this.swapHands=false;this.clapDetector=new ClapDetector();this.slots=Object.fromEntries(sides.map(side=>[side,{trigger:new GunTrigger(),pose:null,anchor:null,lastValid:-Infinity,lastStrict:-Infinity,lastSeen:-Infinity,visible:false,stopSince:null,stopping:false}]));}
+  sideFor(label){const side=physicalHand(label);return side&&this.swapHands?(side==='left'?'right':'left'):side;}
   reset(){this.clapDetector.reset();for(const slot of Object.values(this.slots)){slot.trigger.reset();slot.pose=null;slot.anchor=null;slot.lastSeen=slot.lastValid=slot.lastStrict=-Infinity;slot.visible=false;slot.stopSince=null;slot.stopping=false;}}
   expire(now){for(const slot of Object.values(this.slots)){slot.visible=now-slot.lastValid<=TRACKING_GRACE_MS;if(now-slot.lastSeen>150){slot.stopping=false;slot.stopSince=null;}if(!slot.visible)slot.trigger.miss(now);}}
   update(observations,now){
     const clap=this.clapDetector.update(observations,now);
-    const candidates=(observations||[]).filter(o=>o.confidence>=.4).map(o=>({observation:o,pose:readGunPose(o.landmarks,o.worldLandmarks,o.aspectRatio),stop:readStopPose(o.landmarks,o.worldLandmarks,o.aspectRatio),anchor:o.landmarks?.[0],side:o.confidence>=.75?physicalHand(o.handedness):null})).filter(o=>o.pose&&o.anchor).slice(0,2);
+    const candidates=(observations||[]).filter(o=>o.confidence>=.4).map(o=>({observation:o,pose:readGunPose(o.landmarks,o.worldLandmarks,o.aspectRatio),stop:readStopPose(o.landmarks,o.worldLandmarks,o.aspectRatio),anchor:o.landmarks?.[0],side:o.confidence>=.75?this.sideFor(o.handedness):null})).filter(o=>o.pose&&o.anchor).slice(0,2);
     // Preserve a nearby established identity even if a single label flickers.
     // For a new hand, anatomy wins over which half of the preview it occupies.
     const cost=(o,side)=>{const s=this.slots[side];return s.anchor&&now-s.lastSeen<600?Math.hypot(s.anchor.x-o.anchor.x,s.anchor.y-o.anchor.y):o.side?(o.side===side?.4:1.4):Math.abs((1-o.anchor.x)-(side==='left'?.25:.75));};

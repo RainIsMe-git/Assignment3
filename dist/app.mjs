@@ -5,13 +5,14 @@ import {HandCamera} from './camera.mjs';
 import {GameAudio} from './audio.mjs';
 import {MAX_ENERGY,cameraStatusKey} from './palm-control.mjs';
 import {Tutorial,LESSONS} from './tutorial.mjs';
-import {CLAP_EVERY} from './clap.mjs';
+import {CLAP_WINDOW} from './clap.mjs';
 import {language,setLanguage,resolveLanguage,t,applyTranslations,messages} from './i18n.mjs';
 const $=id=>document.getElementById(id),arena=document.querySelector('.arena'),sides=['left','right'];
 let preferred=resolveLanguage(navigator.languages?.length?navigator.languages:[navigator.language]);
 try{const saved=localStorage.getItem('garden-language');if(['zh','en'].includes(saved))preferred=saved;}catch{}
 setLanguage(preferred);
 const game=new GardenGame(),renderer=new GardenRenderer($('scene')),camera=new HandCamera($('video'),$('landmarks')),tracking=new HandTracking();
+try{tracking.swapHands=localStorage.getItem('garden-swap-hands')==='true';}catch{}
 const hands=Object.fromEntries(sides.map((side,i)=>[side,{aim:{x:i?.63:.37,y:.55},desired:{x:i?.63:.37,y:.55},target:null,visible:true,charge:0,lastShot:-Infinity,pose:null}]));
 let started=false,input='none',loading=false,lastResult=0,lastGun=0,resumeSince=null,feedbackUntil=0,feedbackKey='',feedbackValues={},sound=true,setupGeneration=0,loadingKey='cameraPermission',errorKey='cameraFailed';
 const audio=new GameAudio();
@@ -122,6 +123,7 @@ $('camera-start').onclick=$('retry-camera').onclick=startCamera;
 $('mouse-start').onclick=$('fallback').onclick=()=>{if(sound)void audio.unlock();home();start('mouse');};
 for(const id of ['home','pause-home','result-home','error-home','stop-camera','cancel-loading'])$(id).onclick=home;
 $('pause').onclick=()=>pause('manual');$('resume').onclick=()=>{if(sound)void audio.unlock();resume();};$('challenge').onclick=challenge;
+$('swap-hands').onclick=()=>{tracking.swapHands=!tracking.swapHands;try{localStorage.setItem('garden-swap-hands',String(tracking.swapHands));}catch{}resetInput();$('swap-hands').setAttribute('aria-pressed',String(tracking.swapHands));};
 $('tutorial-skip').onclick=challenge;$('clap-hud').onclick=()=>{if(input==='mouse')clap();};
 $('replay').onclick=()=>{game.finished=false;game.pauseReason='';challenge();};
 $('sound').onclick=()=>{sound=!sound;audio.setEnabled(sound);if(sound)void audio.unlock();refreshLanguage();};
@@ -130,7 +132,7 @@ $('help').onclick=()=>{if(started&&!game.finished&&!game.pauseReason)pause('help
 $('close-help').onclick=$('help-done').onclick=()=>$('help-dialog').close();
 $('language').onclick=()=>{setLanguage(language==='zh'?'en':'zh');try{localStorage.setItem('garden-language',language);}catch{}refreshLanguage();};
 function refreshLanguage(){
-  applyTranslations();$('language').textContent=language==='zh'?'EN':'中文';
+  applyTranslations();$('swap-hands').setAttribute('aria-pressed',String(tracking.swapHands));$('language').textContent=language==='zh'?'EN':'中文';
   $('sound').setAttribute('aria-label',t(sound?'soundOff':'soundOn'));$('sound').setAttribute('aria-pressed',String(sound));
   $('film').setAttribute('aria-label',t(renderer.film?'filmOff':'filmOn'));$('film').setAttribute('aria-pressed',String(renderer.film));
   $('loading-text').textContent=t(loadingKey);$('error-message').textContent=t(errorKey);
@@ -149,10 +151,10 @@ function updateHud(now){
     $('tutorial-progress').setAttribute('aria-label',t('lessonProgress',{step:tutorial.index+1,total:LESSONS.length}));
     $('tutorial-counter').textContent=tutorial.success?'✓':step==='fire'?tutorial.progress+' / 2':step==='charge'?Math.round(Math.max(...Object.values(hands).map(h=>h.charge))*100)+'%':['freeze','push'].includes(step)?Math.min(100,Math.round(tutorial.progress/(step==='push'?1.2:1)*100))+'%':step==='recharge'?Math.min(100,Math.round(tutorial.progress/.6*100))+'%':'✷';
   }
-  $('clap-hud').hidden=!started||game.clapTime>0;$('clap-hud').dataset.ready=String(game.clapReady);
+  $('clap-hud').hidden=!started||!game.clapReady||game.clapTime>0;$('clap-hud').dataset.ready=String(game.clapReady);
   $('clap-hud').disabled=!game.clapReady||!!game.pauseReason||game.finished||input!=='mouse';
-  $('clap-label').textContent=game.clapReady?t(input==='mouse'?'clapReadyMouse':'clapReady'):t('clapProgress',{count:game.combo%CLAP_EVERY,total:CLAP_EVERY});
-  $('clap-fill').style.width=(game.clapReady?100:game.combo%CLAP_EVERY/CLAP_EVERY*100)+'%';
+  $('clap-label').textContent=t(input==='mouse'?'clapReadyMouse':'clapReadyTimed',{seconds:Math.ceil(game.clapRemaining)});
+  $('clap-fill').style.width=(game.clapRemaining/CLAP_WINDOW*100)+'%';
   $('score').textContent=String(game.score).padStart(5,'0');$('time').textContent=game.mode==='practice'?'∞':game.waveState==='break'?String(Math.ceil(game.breakRemaining)):game.wave+' / '+WAVE_COUNTS.length;
   $('health').textContent=game.mode==='practice'?'♥ ∞':'♥ '.repeat(game.hp)+'♡ '.repeat(5-game.hp);
   $('mode-name').textContent=game.mode==='practice'?t('practice'):game.waveState==='break'?t('nextWave',{wave:game.wave+1}):t('waveEnemies',{count:game.plants.length+game.toSpawn});

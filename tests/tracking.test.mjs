@@ -39,8 +39,8 @@ test('a relaxed thumb arms immediately and stays active without a strict pose',(
 });
 
 test('anatomical left and right are preserved even when first seen on the wrong screen half',()=>{
- assert.equal(physicalHand('Right'),'right');assert.equal(physicalHand('Left'),'left');
- for(const [label,side,offset] of [['Left','left',-.15],['Right','right',.15]]){
+ assert.equal(physicalHand('Left'),'right');assert.equal(physicalHand('Right'),'left');
+ for(const [label,side,offset] of [['Right','left',-.15],['Left','right',.15]]){
   const t=new HandTracking(),hand=lift=>({...observation(offset,lift,label),confidence:.98});
   for(let now=0;now<=240;now+=40)t.update([hand(0)],now);
   assert.equal(t.update([hand(.025)],280).shots[0]?.hand,side);
@@ -48,12 +48,20 @@ test('anatomical left and right are preserved even when first seen on the wrong 
 });
 test('high-confidence label flips cannot steal an already tracked single hand',()=>{
  const t=new HandTracking();
- for(let now=0;now<=240;now+=40)t.update([{...observation(.15,0,'Left'),confidence:.98}],now);
- const result=t.update([{...observation(.15,.05,'Right'),confidence:.98}],280);
+ for(let now=0;now<=240;now+=40)t.update([{...observation(.15,0,'Right'),confidence:.98}],now);
+ const result=t.update([{...observation(.15,.05,'Left'),confidence:.98}],280);
  assert.equal(result.shots[0]?.hand,'left');assert.equal(t.slots.right.visible,false);
 });
 test('independent anatomical hands keep ownership as detection order changes',()=>{
- const t=new HandTracking(),left=lift=>({...observation(-.2,lift,'Left'),confidence:.98}),right=lift=>({...observation(.2,lift,'Right'),confidence:.98});
+ const t=new HandTracking(),left=lift=>({...observation(-.2,lift,'Right'),confidence:.98}),right=lift=>({...observation(.2,lift,'Left'),confidence:.98});
  for(let now=0;now<=240;now+=40)t.update(now%80?[left(0),right(0)]:[right(0),left(0)],now);
  assert.deepEqual(t.update([right(.04),left(.04)],280).shots.map(s=>s.hand),['left','right']);
+});
+
+test('manual swap resets cleanly and keeps the preview and gun on the same identity',()=>{
+ const t=new HandTracking();t.swapHands=true;
+ for(let now=0;now<=240;now+=40)t.update([{...observation(.1,0,'Left'),confidence:.98}],now);
+ const result=t.update([{...observation(.1,.05,'Left'),confidence:.98}],280);
+ assert.equal(result.shots[0].hand,'left');assert.equal(result.preview[0].side,'left');
+ t.swapHands=false;t.reset();const changed=t.update([{...observation(.1,0,'Left'),confidence:.98}],320);assert.equal(changed.preview[0].side,'right');assert.equal(changed.shots.length,0);
 });

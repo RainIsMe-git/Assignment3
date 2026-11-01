@@ -1,6 +1,6 @@
 import {PalmEnergy} from './palm-control.mjs';
 import {createQueen,updateQueen} from './queen.mjs';
-import {CLAP_EVERY,CLAP_DAMAGE,CLAP_CONTACT,CLAP_DURATION} from './clap.mjs';
+import {CLAP_EVERY,CLAP_DAMAGE,CLAP_CONTACT,CLAP_DURATION,CLAP_WINDOW} from './clap.mjs';
 // Pure rules shared by the camera, mouse demo and automated tests.
 export const clamp = (v, a = 0, b = 1) => Math.max(a, Math.min(b, v));
 const distance = (a,b) => Math.hypot(a.x-b.x,a.y-b.y,(a.z||0)-(b.z||0));
@@ -120,7 +120,7 @@ export class GardenGame {
     if(!target)return null;
     const point=projectPlant(target),damage=chargeDamage(charge),shotPower=1+2*clamp(charge);
     this.shots++;this.hits++;this.combo++;this.bestCombo=Math.max(this.bestCombo,this.combo);
-    const clapUnlocked=this.combo%CLAP_EVERY===0&&!this.clapReady;
+    const clapUnlocked=this.combo%CLAP_EVERY===0;
     if(clapUnlocked)this.clapReady=true;
     const targets=[target];
     const impacts=targets.map(p=>{
@@ -134,6 +134,8 @@ export class GardenGame {
     this.plants=this.plants.filter(p=>p.hp>0);
     return {hand,...impacts[0],charge:clamp(charge),hit:true,clapUnlocked};
   }
+  get clapReady(){return this.clapRemaining>0;}
+  set clapReady(value){this.clapRemaining=value?CLAP_WINDOW:0;}
   clap(){
     if(!this.clapReady||this.clapTime>0||this.pauseReason||this.finished)return false;
     this.clapReady=false;this.clapTime=CLAP_DURATION;this.clapHit=false;return true;
@@ -141,7 +143,7 @@ export class GardenGame {
   hurt(amount,events){if(this.invulnerable===0){this.hp=Math.max(0,this.hp-amount);this.combo=0;this.invulnerable=1;events.push({type:'damage'});}}
   tick(dt){
     if(this.finished||this.pauseReason)return [];
-    dt=clamp(dt,0,.1);this.elapsed+=dt;this.invulnerable=Math.max(0,this.invulnerable-dt);this.palm.update(dt);
+    dt=clamp(dt,0,.1);this.elapsed+=dt;this.invulnerable=Math.max(0,this.invulnerable-dt);this.palm.update(dt);this.clapRemaining=Math.max(0,this.clapRemaining-dt);
     const enemyDt=dt;this.enemyTime+=enemyDt;
     const events=[];
     if(this.clapTime>0){
